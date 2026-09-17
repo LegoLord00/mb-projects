@@ -58,6 +58,8 @@
   .chip span{font-size:12px;color:var(--muted)}
   .chip.c-soon{border-color:var(--amber);background:var(--amber-soft)} .chip.c-soon span{color:var(--amber);font-weight:600}
   .chip.c-over{border-color:var(--red);background:var(--red-soft)} .chip.c-over span{color:var(--red);font-weight:600}
+  .chip.ev{border-left:3px solid var(--accent)} .chip.ev b::before{content:"\25C6";color:var(--accent);font-size:9px;margin-right:5px;vertical-align:1px}
+  .pill.event{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent)}
   .conn{width:18px;flex:none;border-top:2px solid var(--line)}
   .pill.essential{background:var(--accent);color:var(--accent-ink)}
   main.wide{max-width:none}
@@ -193,6 +195,7 @@
     <div><label>Deadline</label><input type="date" name="deadline"></div>
   </div>
   <label class="check"><input type="checkbox" name="essential"> Essential to the yearly goal <span class="meta">(shows on the timeline at the top of every tab)</span></label>
+  <label class="check"><input type="checkbox" name="event"> Event or launch <span class="meta">(a date, not a deadline; shows on the timeline with a diamond)</span></label>
   <div class="actions"><div class="left row"><button type="button" class="danger" id="projDelete" hidden>Delete project</button><button type="button" id="projArchive" hidden>Archive</button></div><button type="button" id="projCancel">Cancel</button><button class="primary" value="save">Save</button></div>
 </form></dialog>
 
@@ -250,13 +253,13 @@ The page is a single file hosted on GitHub Pages. All data lives in a database o
 
 ## What is in the tool
 
-Projects have a name, description, owner, deadline, status, and an "essential to the yearly goal" flag. Status is one of: idea, planned, active, done.
+Projects have a name, description, owner, deadline, status, an "essential to the yearly goal" flag, and an "event or launch" flag. Status is one of: idea, planned, active, done.
 
 Tasks belong to a project and have a title, assignee, due date, status, and notes. Task status is one of: todo, doing, done. A checkbox on each task marks it done. A task can be moved to a different project from its edit dialog, or reassigned by dragging it between columns in By person.
 
-Essential timeline: projects flagged essential run as a strip under the header on every tab, showing a short name and the deadline in date order (red when overdue, amber within three days). It is for the handful of projects the year depends on. Done and archived projects drop off it.
+Timeline: a strip under the header on every tab, showing a short name and the date in date order (red when past, amber within three days). Two things appear on it. Projects flagged essential, which are the handful of projects the year depends on. And events or launches, marked with a diamond: a date something happens (a launch day, a trade show, a season start) rather than a deadline for work. To add one, create a project and tick the "Event or launch" box; tasks and files can be added to it like any project. Either kind stays on the strip until it is marked done or archived.
 
-Views in the header: Projects (board with a status filter), By person (one column per teammate; drag columns to reorder, drag tasks to reassign), Deadlines (Essential table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
+Views in the header: Projects (board with a status filter), By person (one column per teammate; drag columns to reorder, drag tasks to reassign), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
 
 Files: each project has a Files button. Upload files (quotes, photos, spreadsheets, notes; 8 MB cap, photos are shrunk automatically) or add a link to Google Drive, Docs, or Sheets. Images, PDFs, CSV, and text preview in the page; other types download. The Files tab lists every file across all projects, newest first. Storage is about 1 GB total for the whole tool, so it is for working documents, not a photo archive.
 
@@ -290,7 +293,8 @@ Produce this exact JSON. One project:
     "owner": "Russel",
     "deadline": "2026-10-04",
     "status": "planned",
-    "essential": true
+    "essential": true,
+    "event": false
   },
   "tasks": [
     { "title": "Order 2,000 hangers", "assignee": "Russel", "due": "2026-09-20", "notes": "Same printer as spring" },
@@ -307,6 +311,7 @@ Rules for the JSON:
 - Dates are YYYY-MM-DD. No other format works.
 - status on a project must be idea, planned, active, or done; anything else becomes planned. On a task it may be todo, doing, or done; anything else becomes todo.
 - essential is optional and must be the JSON value true to take effect. Only set it when the person says the project is one the year depends on. Do not flag by default.
+- event is optional and must be the JSON value true to take effect. Set it when the project is a launch or a dated event, where the date is when it happens rather than when work is due. The date goes in deadline. An event may have an empty tasks array.
 - owner and assignee must match a name in the Current team list above exactly. If unsure, leave it empty and the person assigns it in the tool.
 - Output the JSON in a code block with nothing else inside the block so it can be copied in one motion. No comments inside the JSON.
 - Keep task titles short and concrete: one action per task, starting with a verb.
@@ -654,14 +659,15 @@ function render(){
 // tab: short name and deadline, in date order, colored like the Deadlines view. Done and
 // archived projects drop off automatically.
 const abbr = s => s.length>26 ? s.slice(0,24).trimEnd()+"\u2026" : s;
-const essentialProjects = () => openProjects().map(([id,p])=>({id,...p})).filter(p=>p.essential && p.status!=="done").sort((a,b)=>(a.deadline||"9").localeCompare(b.deadline||"9"));
+const essentialProjects = () => openProjects().map(([id,p])=>({id,...p})).filter(p=>(p.essential||p.event) && p.status!=="done").sort((a,b)=>(a.deadline||"9").localeCompare(b.deadline||"9"));
 function renderEssential(){
   const el=$("#essential"); const list=me?essentialProjects():[];
   if(!list.length){ el.hidden=true; el.innerHTML=""; return; }
   el.hidden=false;
-  el.innerHTML = `<div class="lbl">Essential</div><div class="tl">` + list.map((p,i)=>{
-    const dc=dueClass(p.deadline,false); const cls=dc==="overdue"?"c-over":dc==="soon"?"c-soon":"";
-    return (i?'<span class="conn"></span>':"") + `<button class="chip ${cls}" data-ess="${p.id}" title="${esc(p.name)}${p.deadline?" \u00b7 deadline "+fmtDate(p.deadline):" \u00b7 no deadline set"}"><b>${esc(abbr(p.name))}</b><span>${p.deadline?fmtDate(p.deadline):"no date"}</span></button>`;
+  el.innerHTML = `<div class="lbl">Timeline</div><div class="tl">` + list.map((p,i)=>{
+    const dc=dueClass(p.deadline,false); const cls=(dc==="overdue"?"c-over":dc==="soon"?"c-soon":"")+(p.event?" ev":"");
+    const kind=p.event?"event":"deadline";
+    return (i?'<span class="conn"></span>':"") + `<button class="chip ${cls}" data-ess="${p.id}" title="${esc(p.name)}${p.deadline?" \u00b7 "+kind+" "+fmtDate(p.deadline):" \u00b7 no date set"}"><b>${esc(abbr(p.name))}</b><span>${p.deadline?fmtDate(p.deadline):"no date"}</span></button>`;
   }).join("") + `</div>`;
   el.querySelectorAll("[data-ess]").forEach(b=>b.onclick=()=>openProject(b.dataset.ess));
 }
@@ -684,8 +690,8 @@ function renderBoard(m){
     <select id="statusFilter"><option value="">All statuses</option>${["idea","planned","active","done"].map(s=>`<option value="${s}" ${statusFilter===s?"selected":""}>${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select></div>` +
     (list.length? list.map(p=>{
       const ts=tasksFor(p.id); const done=ts.filter(t=>t.status==="done").length;
-      return `<div class="card"><div class="row"><h2 style="flex:1">${esc(p.name)}</h2>${p.essential?`<span class="pill essential" title="Essential to the yearly goal">essential</span>`:""}<span class="pill ${p.status}">${p.status}</span>${p.status==="done"?`<button class="small" data-archive-proj="${p.id}">Archive</button>`:""}<button class="small" data-edit-proj="${p.id}">Edit</button></div>
-        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · <span class="${dueClass(p.deadline,p.status==="done")}">deadline ${fmtDate(p.deadline)}</span> ${calLink("MB: "+p.name,p.deadline,p.description)}`:""} · ${done}/${ts.length} tasks done</div>
+      return `<div class="card"><div class="row"><h2 style="flex:1">${esc(p.name)}</h2>${p.essential?`<span class="pill essential" title="Essential to the yearly goal">essential</span>`:""}${p.event?`<span class="pill event" title="Event or launch">\u25C6 event</span>`:""}<span class="pill ${p.status}">${p.status}</span>${p.status==="done"?`<button class="small" data-archive-proj="${p.id}">Archive</button>`:""}<button class="small" data-edit-proj="${p.id}">Edit</button></div>
+        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · <span class="${dueClass(p.deadline,p.status==="done")}">${p.event?"on":"deadline"} ${fmtDate(p.deadline)}</span> ${calLink("MB: "+p.name,p.deadline,p.description)}`:""} · ${done}/${ts.length} tasks done</div>
         ${p.description?`<p style="margin:8px 0">${esc(p.description)}</p>`:""}
         ${ts.map(t=>taskRow(t,false)).join("")}
         <div class="row" style="margin-top:8px"><button class="small" data-new-task="${p.id}">+ Task</button><button class="small" data-files="${p.id}">Files${filesFor(p.id).length?` (${filesFor(p.id).length})`:""}</button></div></div>`;
@@ -742,13 +748,13 @@ function renderPerson(m){
 
 function renderDeadlines(m){
   const items=[];
-  openProjects().forEach(([id,p])=>{ if(p.deadline&&p.status!=="done") items.push({ess:!!p.essential,kind:"Project",date:p.deadline,title:p.name,who:p.owner,cal:calLink("MB: "+p.name,p.deadline,p.description),edit:`data-edit-proj="${id}"`}); });
-  openTasks().forEach(([id,t])=>{ const p=projects[t.projectId]; if(t.due&&t.status!=="done") items.push({ess:!!p?.essential,kind:"Task",date:t.due,title:t.title,who:t.assignee,sub:p?.name,cal:calLink("MB: "+t.title,t.due,p?.name),edit:`data-edit-task="${id}"`}); });
+  openProjects().forEach(([id,p])=>{ if(p.deadline&&p.status!=="done") items.push({ess:!!(p.essential||p.event),kind:p.event?"Event":"Project",date:p.deadline,title:p.name,who:p.owner,cal:calLink("MB: "+p.name,p.deadline,p.description),edit:`data-edit-proj="${id}"`}); });
+  openTasks().forEach(([id,t])=>{ const p=projects[t.projectId]; if(t.due&&t.status!=="done") items.push({ess:!!(p?.essential||p?.event),kind:"Task",date:t.due,title:t.title,who:t.assignee,sub:p?.name,cal:calLink("MB: "+t.title,t.due,p?.name),edit:`data-edit-task="${id}"`}); });
   items.sort((a,b)=>a.date.localeCompare(b.date));
   const table = list => `<table><thead><tr><th>Date</th><th>What</th><th>Who</th><th></th></tr></thead><tbody>`+
     list.map(i=>`<tr><td class="${dueClass(i.date)}">${fmtDate(i.date)}</td><td><span class="meta">${i.kind}</span> ${esc(i.title)}${i.sub?`<div class="meta">${esc(i.sub)}</div>`:""}</td><td>${esc(i.who||"")}</td><td style="white-space:nowrap">${i.cal} <button class="small" ${i.edit}>Edit</button></td></tr>`).join("")+`</tbody></table>`;
   const ess=items.filter(i=>i.ess), rest=items.filter(i=>!i.ess);
-  m.innerHTML = (ess.length ? `<div class="card"><h2>Essential <span class="meta">projects flagged as essential to the yearly goal, and their tasks</span></h2>${table(ess)}</div>` : "") +
+  m.innerHTML = (ess.length ? `<div class="card"><h2>Timeline <span class="meta">essential projects, events and launches, and their tasks</span></h2>${table(ess)}</div>` : "") +
     `<div class="card"><h2>${ess.length?"Everything else":"Upcoming"}</h2>${rest.length?table(rest):`<div class="meta">${ess.length?"No other open deadlines.":"No open deadlines."}</div>`}</div>`;
   wire(m);
 }
@@ -772,7 +778,7 @@ function renderImport(m){
     for(const item of list){
       const p = item.project || item; if(!p.name){ $("#importMsg").textContent="Each project needs a name."; return; }
       const pk = db.ref("projects").push().key;
-      upd["projects/"+pk] = { name:p.name, description:p.description||"", owner:p.owner||"", deadline:p.deadline||"", essential:p.essential===true, status:["idea","planned","active","done"].includes(p.status)?p.status:"planned", createdAt:Date.now(), createdBy:me.email, ...stamp() }; np++;
+      upd["projects/"+pk] = { name:p.name, description:p.description||"", owner:p.owner||"", deadline:p.deadline||"", essential:p.essential===true, event:p.event===true, status:["idea","planned","active","done"].includes(p.status)?p.status:"planned", createdAt:Date.now(), createdBy:me.email, ...stamp() }; np++;
       for(const t of (item.tasks||[])){ if(!t.title) continue; upd["tasks/"+db.ref("tasks").push().key] = { projectId:pk, title:t.title, assignee:t.assignee||"", due:t.due||"", notes:t.notes||"", status:["todo","doing","done"].includes(t.status)?t.status:"todo", createdAt:Date.now(), createdBy:me.email, ...stamp() }; nt++; }
     }
     await commit(`Imported ${np} project(s), ${nt} task(s)`, upd);
@@ -806,7 +812,7 @@ function renderArchive(m){
     (list.length ? list.map(p=>{
       const ts=tasksFor(p.id); const done=ts.filter(t=>t.status==="done").length;
       return `<div class="card"><div class="row"><h2 style="flex:1">${esc(p.name)}</h2><span class="pill ${p.status}">${p.status}</span><button class="small" data-unarchive-proj="${p.id}">Unarchive</button><button class="small danger" data-trash-proj="${p.id}">Delete</button></div>
-        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · deadline ${fmtDate(p.deadline)}`:""} · ${done}/${ts.length} tasks done · archived ${when(p.archivedAt)}${p.archivedBy?` by ${esc(p.archivedBy)}`:""}</div>
+        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · ${p.event?"on":"deadline"} ${fmtDate(p.deadline)}`:""} · ${done}/${ts.length} tasks done · archived ${when(p.archivedAt)}${p.archivedBy?` by ${esc(p.archivedBy)}`:""}</div>
         ${p.description?`<p style="margin:8px 0">${esc(p.description)}</p>`:""}
         ${filesFor(p.id).length?`<div style="margin:6px 0"><button class="small" data-files="${p.id}">Files (${filesFor(p.id).length})</button></div>`:""}
         ${ts.length?`<details><summary class="meta" style="cursor:pointer">Show ${ts.length} task${ts.length===1?"":"s"}</summary>${ts.map(t=>`<div class="task ${t.status==="done"?"done":""}"><div class="t"><div class="title">${esc(t.title)}</div><div class="meta">${t.assignee?esc(t.assignee):"<i>Unassigned</i>"}${t.due?` · due ${fmtDate(t.due)}`:""}${t.status!=="done"?` · <span class="pill ${t.status}">${t.status==="doing"?"Doing":"To do"}</span>`:""}${t.notes?`<div>${esc(t.notes)}</div>`:""}</div></div></div>`).join("")}</details>`:""}</div>`;
@@ -833,9 +839,11 @@ function snapshot(){
   const out=[`# Mangiapane Brothers projects snapshot`, ``, `As of ${longDate()}. Open projects only; archived and trashed items are left out. Team: ${teamNames().join(", ")||"(none)"}.`, ``];
   const ess=ps.filter(p=>p.essential&&p.status!=="done");
   if(ess.length){ out.push(`## Essential this year`, ``); ess.forEach(p=>out.push(`- ${p.name}${p.deadline?` (deadline ${p.deadline})`:" (no deadline)"}`)); out.push(``); }
+  const evs=ps.filter(p=>p.event&&p.status!=="done").sort((a,b)=>(a.deadline||"9").localeCompare(b.deadline||"9"));
+  if(evs.length){ out.push(`## Events and launches`, ``); evs.forEach(p=>out.push(`- ${p.name}${p.deadline?` (on ${p.deadline})`:" (no date)"}`)); out.push(``); }
   out.push(`## Projects`, ``);
   ps.forEach(p=>{
-    out.push(`### ${p.name}`, `Status: ${p.status}${p.essential?" · essential":""}${p.owner?` · Owner: ${p.owner}`:""}${p.deadline?` · Deadline: ${p.deadline}`:""}`);
+    out.push(`### ${p.name}`, `Status: ${p.status}${p.essential?" · essential":""}${p.event?" · event":""}${p.owner?` · Owner: ${p.owner}`:""}${p.deadline?` · ${p.event?"Date":"Deadline"}: ${p.deadline}`:""}`);
     if(p.description) out.push(p.description);
     const ts=tasksFor(p.id); if(ts.length){ out.push(``); ts.forEach(t=>out.push(`- [${t.status==="done"?"x":" "}] ${t.title}${t.assignee?` (${t.assignee}`+(t.due?`, due ${t.due})`:")"):(t.due?` (due ${t.due})`:"")}${t.status==="doing"?" · doing":""}${t.notes?` · ${t.notes}`:""}`)); }
     const fs=filesFor(p.id); if(fs.length) out.push(``, `Files: ${fs.map(f=>f.name).join("; ")}`);
@@ -893,13 +901,13 @@ let editingProj=null, editingTask=null, taskProject=null;
 function openProject(id){
   editingProj=id; const f=$("#projForm"); f.reset(); const p=id?projects[id]:{};
   $("#projDlgTitle").textContent=id?"Edit project":"New project"; $("#projDelete").hidden=!id; $("#projArchive").hidden=!id||!!p.archivedAt;
-  f.name.value=p.name||""; f.description.value=p.description||""; f.status.value=p.status||"planned"; f.deadline.value=p.deadline||""; f.essential.checked=!!p.essential;
+  f.name.value=p.name||""; f.description.value=p.description||""; f.status.value=p.status||"planned"; f.deadline.value=p.deadline||""; f.essential.checked=!!p.essential; f.event.checked=!!p.event;
   optionList($("#projOwner"), p.owner||""); $("#projDlg").showModal();
 }
 $("#projCancel").onclick=()=>$("#projDlg").close();
 $("#projDelete").onclick=async()=>{ $("#projDlg").close(); await trashProject(editingProj); };
 $("#projArchive").onclick=async()=>{ $("#projDlg").close(); await archiveProject(editingProj); };
-$("#projForm").onsubmit=async e=>{ const f=e.target; await saveProject(editingProj,{name:f.name.value.trim(),description:f.description.value.trim(),owner:f.owner.value,status:f.status.value,deadline:f.deadline.value,essential:f.essential.checked}); };
+$("#projForm").onsubmit=async e=>{ const f=e.target; await saveProject(editingProj,{name:f.name.value.trim(),description:f.description.value.trim(),owner:f.owner.value,status:f.status.value,deadline:f.deadline.value,essential:f.essential.checked,event:f.event.checked}); };
 
 function openTask(id,pid){
   editingTask=id; taskProject=pid; const f=$("#taskForm"); f.reset(); const t=id?tasks[id]:{};
