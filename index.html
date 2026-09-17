@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mangiapane Brothers Projects</title>
+<style>
+  :root{--bg:#f4f5f2;--card:#fff;--ink:#1c1f1a;--muted:#6b7166;--line:#dcdfd8;--green:#2f6b3a;--green-soft:#e3efe5;--amber:#9a6b00;--amber-soft:#fbf1d6;--red:#a03a2a;--red-soft:#f8e3df;--blue:#2c5282;--blue-soft:#e1e9f5;--r:10px}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--green);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  header .tag{font-size:12px;opacity:.85}
+  header .spacer{flex:1}
+  header .who{font-size:13px;opacity:.9}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 12px;border-radius:8px}
+  button.primary{background:var(--green);border-color:var(--green);color:#fff}
+  button.small{padding:4px 9px;font-size:13px}
+  button.ghost{background:transparent;border-color:rgba(255,255,255,.4);color:#fff}
+  button.danger{color:var(--red)}
+  nav{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}
+  nav button{white-space:nowrap}
+  nav button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  main{padding:16px;max-width:1100px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .card h2{font-size:16px;margin:0 0 4px}
+  .meta{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--blue-soft);color:var(--blue);font-weight:600}
+  .pill.idea{background:#eee;color:#555}.pill.planned{background:var(--blue-soft);color:var(--blue)}.pill.active{background:var(--amber-soft);color:var(--amber)}.pill.done{background:var(--green-soft);color:var(--green)}
+  .pill.todo{background:#eee;color:#555}.pill.doing{background:var(--amber-soft);color:var(--amber)}
+  .overdue{color:var(--red);font-weight:600}
+  .soon{color:var(--amber);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .task{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+  .task input[type=checkbox]{margin-top:4px;width:18px;height:18px}
+  .task .t{flex:1}
+  .task.done .t .title{text-decoration:line-through;color:var(--muted)}
+  .task .title{font-weight:500}
+  input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+  textarea{min-height:80px;resize:vertical}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  dialog{border:none;border-radius:12px;padding:0;width:min(560px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(0,0,0,.35)}
+  dialog .body{padding:18px}
+  dialog h3{margin:0 0 6px}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .actions .left{margin-right:auto}
+  .empty{color:var(--muted);padding:24px;text-align:center}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  #gate{max-width:420px;margin:60px auto;text-align:center}
+  a.cal{font-size:12px;color:var(--blue);text-decoration:none}
+  a.cal:hover{text-decoration:underline}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .filters select{width:auto}
+  code{background:#eee;padding:1px 5px;border-radius:4px;font-size:13px}
+  pre{background:#f0f0ec;padding:10px;border-radius:8px;overflow:auto;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Mangiapane Brothers Projects</h1><div class="tag">Reliable Service. Uncompromising Standards.</div></div>
+  <div class="spacer"></div>
+  <div class="who" id="who"></div>
+  <button class="ghost small" id="undoBtn" hidden>Undo</button>
+  <button class="ghost small" id="signout" hidden>Sign out</button>
+</header>
+
+<div id="gate" class="card" hidden>
+  <h2>Sign in</h2>
+  <p class="meta">Crew leads only. Use the Google account Russel added to the team list.</p>
+  <button class="primary" id="signin">Sign in with Google</button>
+  <p class="meta" id="gateMsg"></p>
+</div>
+
+<div id="app" hidden>
+  <nav>
+    <button data-view="board" class="on">Projects</button>
+    <button data-view="person">By person</button>
+    <button data-view="deadlines">Deadlines</button>
+    <button data-view="import">Import from Claude</button>
+    <button data-view="team" id="teamTab">Team</button>
+    <button data-view="trash">Trash</button>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<dialog id="projDlg"><form method="dialog" class="body" id="projForm">
+  <h3 id="projDlgTitle">New project</h3>
+  <label>Name</label><input name="name" required>
+  <label>Description</label><textarea name="description"></textarea>
+  <div class="grid2">
+    <div><label>Owner</label><select name="owner" id="projOwner"></select></div>
+    <div><label>Status</label><select name="status"><option value="idea">Idea</option><option value="planned">Planned</option><option value="active">Active</option><option value="done">Done</option></select></div>
+    <div><label>Deadline</label><input type="date" name="deadline"></div>
+  </div>
+  <div class="actions"><button type="button" class="danger left" id="projDelete" hidden>Delete project</button><button type="button" id="projCancel">Cancel</button><button class="primary" value="save">Save</button></div>
+</form></dialog>
+
+<dialog id="taskDlg"><form method="dialog" class="body" id="taskForm">
+  <h3 id="taskDlgTitle">New task</h3>
+  <label>Title</label><input name="title" required>
+  <div class="grid2">
+    <div><label>Assignee</label><select name="assignee" id="taskAssignee"></select></div>
+    <div><label>Status</label><select name="status"><option value="todo">To do</option><option value="doing">Doing</option><option value="done">Done</option></select></div>
+    <div><label>Due</label><input type="date" name="due"></div>
+    <div><label>Project</label><select name="projectId" id="taskProjectSel"></select></div>
+  </div>
+  <label>Notes</label><textarea name="notes"></textarea>
+  <div class="actions"><button type="button" class="danger left" id="taskDelete" hidden>Delete task</button><button type="button" id="taskCancel">Cancel</button><button class="primary" value="save">Save</button></div>
+</form></dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+// ===== CONFIG: replace with the block from Firebase console =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDLndoLTcm8zKyN3WlVfYoGVQmVlbMlib4",
+  authDomain: "mb-projects-c4383.firebaseapp.com",
+  databaseURL: "https://mb-projects-c4383-default-rtdb.firebaseio.com",
+  projectId: "mb-projects-c4383",
+  storageBucket: "mb-projects-c4383.firebasestorage.app",
+  messagingSenderId: "246828597156",
+  appId: "1:246828597156:web:dfa85db16f51d85b5fcb31"
+};
+const ADMIN_EMAIL = "russel.mangiapaneiii@gmail.com";
+// ================================================================
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const emailKey = e => e.toLowerCase().replace(/\./g, ",");
+const today = () => new Date().toISOString().slice(0,10);
+function toast(m){ const t=$("#toast"); t.textContent=m; t.style.pointerEvents="none"; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
+function fmtDate(d){ if(!d) return ""; const [y,m,dd]=d.split("-"); return `${+m}/${+dd}/${y.slice(2)}`; }
+function dueClass(d, done){ if(!d||done) return ""; const diff=(new Date(d)-new Date(today()))/864e5; if(diff<0) return "overdue"; if(diff<=3) return "soon"; return ""; }
+function calLink(title, date, details){
+  if(!date) return "";
+  const s=date.replace(/-/g,""); const n=new Date(date); n.setDate(n.getDate()+1); const e=n.toISOString().slice(0,10).replace(/-/g,"");
+  const u=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${s}/${e}&details=${encodeURIComponent(details||"")}`;
+  return `<a class="cal" target="_blank" rel="noopener" href="${u}">+ Google Calendar</a>`;
+}
+
+let me=null, isAdmin=false, view="board";
+let projects={}, tasks={}, team={};
+let personFilter="", statusFilter="";
+
+// ---------- auth ----------
+$("#signin").onclick = async () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  try { await auth.signInWithPopup(p); }
+  catch(e){ if(/popup/.test(e.code)) auth.signInWithRedirect(p); else $("#gateMsg").textContent = e.message; }
+};
+$("#signout").onclick = () => auth.signOut();
+$("#undoBtn").onclick = undo;
+document.addEventListener("keydown", e => { if((e.metaKey||e.ctrlKey) && e.key==="z" && !e.target.matches("input,textarea")){ e.preventDefault(); undo(); } });
+
+auth.onAuthStateChanged(async user => {
+  me = user; isAdmin = !!user && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  $("#who").textContent = user ? user.email : "";
+  $("#signout").hidden = !user;
+  $("#teamTab").hidden = !user;
+  if(!user){ $("#gate").hidden=false; $("#app").hidden=true; detach(); return; }
+  if(isAdmin){
+    // bootstrap the admin into the allowlist so the read rules pass
+    await db.ref("allowed/"+emailKey(user.email)).update({ name: user.displayName || "Russel", email: user.email.toLowerCase() });
+  }
+  try {
+    await db.ref("allowed/"+emailKey(user.email)).once("value");
+    $("#gate").hidden=true; $("#app").hidden=false; attach();
+  } catch(e){
+    $("#gate").hidden=false; $("#app").hidden=true;
+    $("#gateMsg").textContent = `${user.email} is not on the team list. Ask Russel to add it, then sign out and back in.`;
+  }
+});
+
+// ---------- realtime listeners ----------
+const refs = {};
+function attach(){
+  refs.p = db.ref("projects"); refs.t = db.ref("tasks"); refs.a = db.ref("allowed");
+  refs.p.on("value", s => { projects = s.val()||{}; render(); });
+  refs.t.on("value", s => { tasks = s.val()||{}; render(); });
+  refs.a.on("value", s => { team = s.val()||{}; render(); });
+  Promise.all([refs.p.once("value"), refs.t.once("value")]).then(autoPurge);
+}
+function detach(){ Object.values(refs).forEach(r => r && r.off()); }
+
+// ---------- writes, undo, trash ----------
+// Every change is a multi-path update. Before applying it we read the current
+// value at each path from the local cache and keep the reverse, so Undo is a
+// second multi-path update that puts things back. The stack lives only in this
+// browser tab; it undoes your own actions, not a teammate's.
+const stamp = () => ({ updatedAt: Date.now(), updatedBy: me.email });
+const cache = { projects: () => projects, tasks: () => tasks, allowed: () => team };
+function getAt(path){ const [root, ...rest] = path.split("/"); let v = cache[root] ? cache[root]() : undefined; for(const k of rest){ if(v==null) return null; v = v[k]; } return v === undefined ? null : JSON.parse(JSON.stringify(v)); }
+const undoStack = [];
+async function commit(label, updates){
+  const revert = {}; for(const p of Object.keys(updates)) revert[p] = getAt(p);
+  await db.ref().update(updates);
+  undoStack.push({ label, revert }); if(undoStack.length > 30) undoStack.shift();
+  showUndo(label);
+}
+async function undo(){
+  const a = undoStack.pop(); if(!a) return toast("Nothing to undo");
+  await db.ref().update(a.revert); toast("Undid: " + a.label); renderUndoBtn();
+}
+function renderUndoBtn(){ const b=$("#undoBtn"); b.hidden = !undoStack.length; b.title = undoStack.length ? "Undo: " + undoStack[undoStack.length-1].label : ""; }
+let undoTimer;
+function showUndo(label){
+  renderUndoBtn();
+  const t=$("#toast"); t.innerHTML = `${esc(label)} <button class="small" id="toastUndo" style="margin-left:10px">Undo</button>`; t.style.pointerEvents="auto"; t.classList.add("show");
+  $("#toastUndo").onclick = () => { t.classList.remove("show"); undo(); };
+  clearTimeout(undoTimer); undoTimer = setTimeout(()=>{ t.classList.remove("show"); t.style.pointerEvents="none"; }, 8000);
+}
+function fieldUpdates(base, data){ const u={}; for(const [k,v] of Object.entries(data)) u[base+"/"+k]=v; return u; }
+function saveProject(id, data){
+  const isNew=!id; id = id || db.ref("projects").push().key;
+  return commit(isNew ? "Created project" : "Edited project", fieldUpdates("projects/"+id, {...data, ...stamp(), ...(isNew?{createdAt:Date.now(), createdBy:me.email}:{})}));
+}
+function saveTask(id, data){
+  const isNew=!id; id = id || db.ref("tasks").push().key;
+  return commit(isNew ? "Added task" : "Edited task", fieldUpdates("tasks/"+id, {...data, ...stamp(), ...(isNew?{createdAt:Date.now(), createdBy:me.email}:{})}));
+}
+// Soft delete: mark, keep for 30 days, purge from the Trash view or automatically.
+function trashProject(id){
+  const upd={}; const now=Date.now();
+  upd["projects/"+id+"/deletedAt"]=now; upd["projects/"+id+"/deletedBy"]=me.email;
+  Object.entries(tasks).forEach(([tid,t])=>{ if(t.projectId===id && !t.deletedAt){ upd["tasks/"+tid+"/deletedAt"]=now; upd["tasks/"+tid+"/deletedBy"]=me.email; upd["tasks/"+tid+"/deletedWith"]=id; } });
+  return commit("Moved project to trash", upd);
+}
+function trashTask(id){ return commit("Moved task to trash", { ["tasks/"+id+"/deletedAt"]: Date.now(), ["tasks/"+id+"/deletedBy"]: me.email }); }
+function restoreProject(id){
+  const upd={ ["projects/"+id+"/deletedAt"]: null, ["projects/"+id+"/deletedBy"]: null };
+  Object.entries(tasks).forEach(([tid,t])=>{ if(t.deletedWith===id){ upd["tasks/"+tid+"/deletedAt"]=null; upd["tasks/"+tid+"/deletedBy"]=null; upd["tasks/"+tid+"/deletedWith"]=null; } });
+  return commit("Restored project", upd);
+}
+function restoreTask(id){ return commit("Restored task", { ["tasks/"+id+"/deletedAt"]: null, ["tasks/"+id+"/deletedBy"]: null, ["tasks/"+id+"/deletedWith"]: null }); }
+function purgeProject(id){ const upd={ ["projects/"+id]: null }; Object.entries(tasks).forEach(([tid,t])=>{ if(t.projectId===id) upd["tasks/"+tid]=null; }); return commit("Deleted project permanently", upd); }
+function purgeTask(id){ return commit("Deleted task permanently", { ["tasks/"+id]: null }); }
+const PURGE_AFTER = 30*864e5;
+function autoPurge(){
+  const cutoff=Date.now()-PURGE_AFTER, upd={};
+  Object.entries(projects).forEach(([id,p])=>{ if(p.deletedAt && p.deletedAt<cutoff){ upd["projects/"+id]=null; Object.entries(tasks).forEach(([tid,t])=>{ if(t.projectId===id) upd["tasks/"+tid]=null; }); } });
+  Object.entries(tasks).forEach(([id,t])=>{ if(t.deletedAt && t.deletedAt<cutoff) upd["tasks/"+id]=null; });
+  if(Object.keys(upd).length) db.ref().update(upd);
+}
+const live = obj => Object.entries(obj).filter(([,v])=>!v.deletedAt);
+const trashed = obj => Object.entries(obj).filter(([,v])=>v.deletedAt);
+
+// ---------- rendering ----------
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => { view=b.dataset.view; document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(); });
+
+function teamNames(){ return Object.values(team).map(t=>t.name).filter(Boolean).sort(); }
+function optionList(sel, current){ const names=teamNames(); if(current && !names.includes(current)) names.push(current); sel.innerHTML = `<option value="">Unassigned</option>` + names.map(n=>`<option ${n===current?"selected":""}>${esc(n)}</option>`).join(""); }
+function tasksFor(pid){ return live(tasks).filter(([,t])=>t.projectId===pid).map(([id,t])=>({id,...t})).sort((a,b)=>(a.status==="done")-(b.status==="done") || (a.due||"9").localeCompare(b.due||"9")); }
+
+function render(){
+  const m=$("#main");
+  if(view==="board") renderBoard(m);
+  else if(view==="person") renderPerson(m);
+  else if(view==="deadlines") renderDeadlines(m);
+  else if(view==="import") renderImport(m);
+  else if(view==="team") renderTeam(m);
+  else if(view==="trash") renderTrash(m);
+}
+
+function taskRow(t, showProject){
+  const p = projects[t.projectId];
+  return `<div class="task ${t.status==="done"?"done":""}" data-task="${t.id}">
+    <input type="checkbox" ${t.status==="done"?"checked":""} data-toggle="${t.id}">
+    <div class="t"><div class="title">${esc(t.title)}</div>
+      <div class="meta">${showProject&&p?`<b>${esc(p.name)}</b> · `:""}${t.assignee?esc(t.assignee):"<i>Unassigned</i>"}${t.due?` · <span class="${dueClass(t.due,t.status==="done")}">due ${fmtDate(t.due)}</span>`:""}${t.status==="doing"?' · <span class="pill doing">Doing</span>':""}${t.notes?`<div>${esc(t.notes)}</div>`:""}</div></div>
+    <button class="small" data-edit-task="${t.id}">Edit</button>
+  </div>`;
+}
+
+function renderBoard(m){
+  const order=["active","planned","idea","done"];
+  const list=live(projects).map(([id,p])=>({id,...p})).filter(p=>!statusFilter||p.status===statusFilter)
+    .sort((a,b)=>order.indexOf(a.status)-order.indexOf(b.status) || (a.deadline||"9").localeCompare(b.deadline||"9"));
+  m.innerHTML = `<div class="filters"><button class="primary" id="newProj">+ New project</button>
+    <select id="statusFilter"><option value="">All statuses</option>${["idea","planned","active","done"].map(s=>`<option value="${s}" ${statusFilter===s?"selected":""}>${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select></div>` +
+    (list.length? list.map(p=>{
+      const ts=tasksFor(p.id); const done=ts.filter(t=>t.status==="done").length;
+      return `<div class="card"><div class="row"><h2 style="flex:1">${esc(p.name)}</h2><span class="pill ${p.status}">${p.status}</span><button class="small" data-edit-proj="${p.id}">Edit</button></div>
+        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · <span class="${dueClass(p.deadline,p.status==="done")}">deadline ${fmtDate(p.deadline)}</span> ${calLink("MB: "+p.name,p.deadline,p.description)}`:""} · ${done}/${ts.length} tasks done</div>
+        ${p.description?`<p style="margin:8px 0">${esc(p.description)}</p>`:""}
+        ${ts.map(t=>taskRow(t,false)).join("")}
+        <div style="margin-top:8px"><button class="small" data-new-task="${p.id}">+ Task</button></div></div>`;
+    }).join("") : `<div class="empty">No projects yet. Create one or use Import from Claude.</div>`);
+  $("#newProj").onclick=()=>openProject(null);
+  $("#statusFilter").onchange=e=>{statusFilter=e.target.value;render();};
+  wire(m);
+}
+
+function renderPerson(m){
+  const names=teamNames(); const all=live(tasks).map(([id,t])=>({id,...t}));
+  const groups=[...names,"Unassigned"].map(n=>({n, ts: all.filter(t=>(t.assignee||"Unassigned")===n && t.status!=="done").sort((a,b)=>(a.due||"9").localeCompare(b.due||"9"))}));
+  m.innerHTML = groups.map(g=>`<div class="card"><h2>${esc(g.n)} <span class="meta">${g.ts.length} open</span></h2>${g.ts.length?g.ts.map(t=>taskRow(t,true)).join(""):'<div class="meta">Nothing open.</div>'}</div>`).join("");
+  wire(m);
+}
+
+function renderDeadlines(m){
+  const items=[];
+  live(projects).forEach(([id,p])=>{ if(p.deadline&&p.status!=="done") items.push({kind:"Project",date:p.deadline,title:p.name,who:p.owner,cal:calLink("MB: "+p.name,p.deadline,p.description),edit:`data-edit-proj="${id}"`}); });
+  live(tasks).forEach(([id,t])=>{ if(t.due&&t.status!=="done") items.push({kind:"Task",date:t.due,title:t.title,who:t.assignee,sub:projects[t.projectId]?.name,cal:calLink("MB: "+t.title,t.due,projects[t.projectId]?.name),edit:`data-edit-task="${id}"`}); });
+  items.sort((a,b)=>a.date.localeCompare(b.date));
+  m.innerHTML = `<div class="card"><h2>Upcoming</h2>${items.length?`<table><thead><tr><th>Date</th><th>What</th><th>Who</th><th></th></tr></thead><tbody>`+
+    items.map(i=>`<tr><td class="${dueClass(i.date)}">${fmtDate(i.date)}</td><td><span class="meta">${i.kind}</span> ${esc(i.title)}${i.sub?`<div class="meta">${esc(i.sub)}</div>`:""}</td><td>${esc(i.who||"")}</td><td style="white-space:nowrap">${i.cal} <button class="small" ${i.edit}>Edit</button></td></tr>`).join("")+`</tbody></table>`:'<div class="meta">No open deadlines.</div>'}</div>`;
+  wire(m);
+}
+
+function renderImport(m){
+  m.innerHTML = `<div class="card"><h2>Import from Claude</h2>
+    <p class="meta">Ask Claude for a project in this format, paste it below, and click Import. One project or a list of projects. Names in <code>assignee</code> and <code>owner</code> should match the team list exactly.</p>
+    <pre>{
+  "project": { "name": "Fall door hanger pass", "description": "...", "owner": "Russel", "deadline": "2026-10-04", "status": "planned" },
+  "tasks": [
+    { "title": "Order 2,000 hangers", "assignee": "Russel", "due": "2026-09-20", "notes": "" }
+  ]
+}</pre>
+    <textarea id="importBox" style="min-height:160px" placeholder="Paste JSON here"></textarea>
+    <div class="actions"><button class="primary" id="importBtn">Import</button></div>
+    <div class="meta" id="importMsg"></div></div>`;
+  $("#importBtn").onclick = async () => {
+    let data; try { data = JSON.parse($("#importBox").value); } catch(e){ $("#importMsg").textContent="That is not valid JSON: "+e.message; return; }
+    const list = Array.isArray(data) ? data : [data];
+    let np=0, nt=0; const upd={};
+    for(const item of list){
+      const p = item.project || item; if(!p.name){ $("#importMsg").textContent="Each project needs a name."; return; }
+      const pk = db.ref("projects").push().key;
+      upd["projects/"+pk] = { name:p.name, description:p.description||"", owner:p.owner||"", deadline:p.deadline||"", status:["idea","planned","active","done"].includes(p.status)?p.status:"planned", createdAt:Date.now(), createdBy:me.email, ...stamp() }; np++;
+      for(const t of (item.tasks||[])){ if(!t.title) continue; upd["tasks/"+db.ref("tasks").push().key] = { projectId:pk, title:t.title, assignee:t.assignee||"", due:t.due||"", notes:t.notes||"", status:["todo","doing","done"].includes(t.status)?t.status:"todo", createdAt:Date.now(), createdBy:me.email, ...stamp() }; nt++; }
+    }
+    await commit(`Imported ${np} project(s), ${nt} task(s)`, upd);
+    $("#importBox").value=""; $("#importMsg").textContent=`Imported ${np} project(s) and ${nt} task(s).`;
+  };
+}
+
+function renderTeam(m){
+  const rows=Object.entries(team).map(([k,t])=>`<tr><td>${esc(t.name)}</td><td>${esc(t.email)}</td><td>${t.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()?'<span class="meta">admin</span>':`<button class="small danger" data-rm="${k}">Remove</button>`}</td></tr>`).join("");
+  m.innerHTML = `<div class="card"><h2>Team</h2><p class="meta">Only people listed here can open this page. Anyone on the list can add or remove teammates; the admin cannot be removed. Names are what show up as owners and assignees.</p>
+    <table><thead><tr><th>Name</th><th>Google email</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="grid2" style="margin-top:12px"><div><label>Name</label><input id="tmName" placeholder="First name"></div><div><label>Google email</label><input id="tmEmail" type="email" placeholder="name@gmail.com"></div></div>
+    <div class="actions"><button class="primary" id="tmAdd">Add teammate</button></div></div>`;
+  $("#tmAdd").onclick = async () => {
+    const name=$("#tmName").value.trim(), email=$("#tmEmail").value.trim().toLowerCase();
+    if(!name||!/@/.test(email)) return toast("Name and a valid email are required");
+    await commit("Added "+name+" to team", { ["allowed/"+emailKey(email)]: {name,email} });
+  };
+  m.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>commit("Removed "+team[b.dataset.rm].name+" from team", { ["allowed/"+b.dataset.rm]: null }));
+}
+
+function renderTrash(m){
+  const ps=trashed(projects).sort((a,b)=>b[1].deletedAt-a[1].deletedAt);
+  const ts=trashed(tasks).filter(([,t])=>!t.deletedWith || !projects[t.deletedWith]?.deletedAt).sort((a,b)=>b[1].deletedAt-a[1].deletedAt);
+  const when=ms=>new Date(ms).toLocaleDateString();
+  m.innerHTML = `<div class="card"><h2>Trash</h2><p class="meta">Deleted items stay here for 30 days, then are removed for good. Restoring a project brings its tasks back with it.</p>
+    ${ps.length||ts.length ? `<table><thead><tr><th>Item</th><th>Deleted</th><th></th></tr></thead><tbody>`+
+      ps.map(([id,p])=>`<tr><td><span class="meta">Project</span> ${esc(p.name)}<div class="meta">${tasksAll(id).length} task(s)</div></td><td class="meta">${when(p.deletedAt)}<div>${esc(p.deletedBy||"")}</div></td><td style="white-space:nowrap"><button class="small" data-restore-proj="${id}">Restore</button> <button class="small danger" data-purge-proj="${id}">Delete forever</button></td></tr>`).join("")+
+      ts.map(([id,t])=>`<tr><td><span class="meta">Task</span> ${esc(t.title)}<div class="meta">${esc(projects[t.projectId]?.name||"")}</div></td><td class="meta">${when(t.deletedAt)}<div>${esc(t.deletedBy||"")}</div></td><td style="white-space:nowrap"><button class="small" data-restore-task="${id}">Restore</button> <button class="small danger" data-purge-task="${id}">Delete forever</button></td></tr>`).join("")+`</tbody></table>` : '<div class="meta">Trash is empty.</div>'}</div>`;
+  m.querySelectorAll("[data-restore-proj]").forEach(b=>b.onclick=()=>restoreProject(b.dataset.restoreProj));
+  m.querySelectorAll("[data-purge-proj]").forEach(b=>b.onclick=()=>purgeProject(b.dataset.purgeProj));
+  m.querySelectorAll("[data-restore-task]").forEach(b=>b.onclick=()=>restoreTask(b.dataset.restoreTask));
+  m.querySelectorAll("[data-purge-task]").forEach(b=>b.onclick=()=>purgeTask(b.dataset.purgeTask));
+}
+function tasksAll(pid){ return Object.values(tasks).filter(t=>t.projectId===pid); }
+
+function wire(m){
+  m.querySelectorAll("[data-toggle]").forEach(c=>c.onchange=()=>commit(c.checked?"Completed task":"Reopened task", fieldUpdates("tasks/"+c.dataset.toggle,{status:c.checked?"done":"todo", ...stamp()})));
+  m.querySelectorAll("[data-edit-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.editTask,null));
+  m.querySelectorAll("[data-new-task]").forEach(b=>b.onclick=()=>openTask(null,b.dataset.newTask));
+  m.querySelectorAll("[data-edit-proj]").forEach(b=>b.onclick=()=>openProject(b.dataset.editProj));
+}
+
+// ---------- dialogs ----------
+let editingProj=null, editingTask=null, taskProject=null;
+function openProject(id){
+  editingProj=id; const f=$("#projForm"); f.reset(); const p=id?projects[id]:{};
+  $("#projDlgTitle").textContent=id?"Edit project":"New project"; $("#projDelete").hidden=!id;
+  f.name.value=p.name||""; f.description.value=p.description||""; f.status.value=p.status||"planned"; f.deadline.value=p.deadline||"";
+  optionList($("#projOwner"), p.owner||""); $("#projDlg").showModal();
+}
+$("#projCancel").onclick=()=>$("#projDlg").close();
+$("#projDelete").onclick=async()=>{ $("#projDlg").close(); await trashProject(editingProj); };
+$("#projForm").onsubmit=async e=>{ const f=e.target; await saveProject(editingProj,{name:f.name.value.trim(),description:f.description.value.trim(),owner:f.owner.value,status:f.status.value,deadline:f.deadline.value}); };
+
+function openTask(id,pid){
+  editingTask=id; taskProject=pid; const f=$("#taskForm"); f.reset(); const t=id?tasks[id]:{};
+  $("#taskDlgTitle").textContent=id?"Edit task":"New task in "+(projects[pid]?.name||""); $("#taskDelete").hidden=!id;
+  f.title.value=t.title||""; f.status.value=t.status||"todo"; f.due.value=t.due||""; f.notes.value=t.notes||"";
+  optionList($("#taskAssignee"), t.assignee||"");
+  const cur=t.projectId||pid; $("#taskProjectSel").innerHTML=live(projects).sort((a,b)=>a[1].name.localeCompare(b[1].name)).map(([k,p])=>`<option value="${k}" ${k===cur?"selected":""}>${esc(p.name)}</option>`).join("");
+  $("#taskDlg").showModal();
+}
+$("#taskCancel").onclick=()=>$("#taskDlg").close();
+$("#taskDelete").onclick=async()=>{ $("#taskDlg").close(); await trashTask(editingTask); };
+$("#taskForm").onsubmit=async e=>{ const f=e.target; const data={title:f.title.value.trim(),assignee:f.assignee.value,status:f.status.value,due:f.due.value,notes:f.notes.value.trim(),projectId:f.projectId.value||taskProject}; await saveTask(editingTask,data); };
+</script>
+</body>
+</html>
