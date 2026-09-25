@@ -108,6 +108,10 @@
   .pblock details{margin-top:4px}
   .pblock summary{cursor:pointer;font-size:12px}
   .pblock .task{padding:6px 0}
+  .pblock[draggable]{cursor:grab}
+  .pblock.dragging{opacity:.4}
+  .pblock .grip{color:var(--muted);font-size:14px;letter-spacing:-2px;flex:none}
+  @media(max-width:700px){.pblock[draggable]{cursor:default}.pblock .grip{display:none}}
   .people-bar{display:flex;gap:10px;align-items:center;margin-bottom:10px;color:var(--muted);font-size:13px}
   @media(max-width:700px){.people{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:1fr;overflow:visible}.people .card{min-height:0}.people .card h2{cursor:default}}
   .file{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;margin-top:6px;background:var(--card)}
@@ -293,7 +297,7 @@ Tasks belong to a project and have a title, assignee, due date, status, notes, a
 
 Timeline: a strip under the header on every tab, showing a short name and the date in date order (red when past, amber within three days), with a "today" marker between what is past and what is ahead. Two things appear on it. Anything flagged essential: the handful of projects the year depends on, and single tasks flagged essential when one deadline matters without needing its own project (a task chip shows its project under the date). And events or launches, marked with a diamond: a date something happens (a launch day, a trade show, a season start) rather than a deadline for work. Tick the box in the project or task dialog to put something on the strip. An event project is not shown on the Projects board; open it from its chip on the strip, or find it in Deadlines. When the strip fills, it scrolls sideways: drag it with the mouse, or scroll on a trackpad or phone. It opens at today; click the word Timeline to jump back there. Either kind stays on the strip until it is marked done or archived.
 
-Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; each card has an arrow to hide or show its tasks, a Pin button that keeps it at the top, and can be dragged by its title row to reorder; tasks can be dragged to reorder within their project; pin and order are shared with the whole team, the arrow is per browser), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; drag columns to reorder, drag tasks to reassign), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
+Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; each card has an arrow to hide or show its tasks, a Pin button that keeps it at the top, and can be dragged by its title row to reorder; tasks can be dragged to reorder within their project; pin and order are shared with the whole team, the arrow is per browser), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; drag columns to reorder, drag a project block or a task onto a person to reassign it; moving a project takes the owner's tasks with it), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
 
 Files: each project has a Files button. Upload files (quotes, photos, spreadsheets, notes; 8 MB cap, photos are shrunk automatically) or add a link to Google Drive, Docs, or Sheets. Images, PDFs, CSV, and text preview in the page; other types download. The Files tab lists every file across all projects, newest first. Storage is about 1 GB total for the whole tool, so it is for working documents, not a photo archive.
 
@@ -846,6 +850,14 @@ function personOrder(){
   if(!saved) return names;
   return [...saved.filter(n=>names.includes(n)), ...names.filter(n=>!saved.includes(n))];
 }
+// Changing a project's owner from By person: the project and every task that belonged to the
+// old owner (assigned to them, or unassigned) move together. Tasks assigned to other people stay put.
+function reassignProject(pid, to){
+  const p=projects[pid]; if(!p||(p.owner||"")===to) return;
+  const upd={ ["projects/"+pid+"/owner"]: to, ...fieldUpdates("projects/"+pid, stamp()) };
+  live(tasks).forEach(([tid,t])=>{ if(t.projectId===pid && t.assignee && t.assignee===(p.owner||"")) upd["tasks/"+tid+"/assignee"]=to; });
+  return commit(to?`Reassigned project to ${to}`:"Removed project owner", upd);
+}
 function renderPerson(m){
   // Since Sept 25: a column shows the projects the person owns, as blocks, with their own tasks
   // folded inside (a task with no assignee counts as the owner's). A task only appears on its own
@@ -866,10 +878,10 @@ function renderPerson(m){
     const ts=all.filter(t=>ownerOf(t)===key && ((projects[t.projectId]?.owner||"")!==key || projects[t.projectId]?.event)).sort(byDue);
     return {n, ps, ts, open: ps.reduce((s,x)=>s+x.mine.length,0)+ts.length};
   });
-  const block=x=>`<div class="pblock"><div class="row" style="flex-wrap:nowrap"><b style="flex:1">${esc(x.p.name)}</b><button class="small" data-edit-proj="${x.p.id}">Edit</button></div>
+  const block=x=>`<div class="pblock" data-pblock="${x.p.id}" draggable="true" title="Drag onto a person to change the owner"><div class="row" style="flex-wrap:nowrap"><span class="grip" title="Drag to reassign">&#8942;&#8942;</span><b style="flex:1">${esc(x.p.name)}</b><button class="small" data-edit-proj="${x.p.id}">Edit</button></div>
       <div class="meta">${[x.p.deadline?`<span class="${dueClass(x.p.deadline,false)}">deadline ${fmtDate(x.p.deadline)}</span>`:"", x.mine.length?`${x.mine.length} open task${x.mine.length===1?"":"s"}`:"no open tasks", Object.keys(x.helpers).length?`with ${Object.entries(x.helpers).map(([h,c])=>`${esc(h||UNASSIGNED)} (${c})`).join(", ")}`:""].filter(Boolean).join(" \u00b7 ")}</div>
       ${x.mine.length?`<details open><summary class="meta">Tasks</summary>${x.mine.map(t=>taskRow(t,false,true)).join("")}<button class="small" data-new-task="${x.p.id}" style="margin-top:6px">+ Task</button></details>`:`<button class="small" data-new-task="${x.p.id}" style="margin-top:6px">+ Task</button>`}</div>`;
-  m.innerHTML = `<div class="people-bar"><span>A project sits under its owner with its tasks inside. A task shows on its own only when it is assigned to someone else. Drag a column header to reorder; drag a task onto a person to reassign it.</span>${custom?`<button class="small" id="resetOrder">Reset order</button>`:""}</div>` +
+  m.innerHTML = `<div class="people-bar"><span>A project sits under its owner with its tasks inside. A task shows on its own only when it is assigned to someone else. Drag a column header to reorder; drag a project block or a task onto a person to reassign it.</span>${custom?`<button class="small" id="resetOrder">Reset order</button>`:""}</div>` +
     `<div class="people">` + groups.map(g=>`<div class="card" data-col="${esc(g.n)}" draggable="true"><h2><span class="grip" title="Drag to reorder">&#8942;&#8942;</span>${esc(g.n)}<span class="meta">${g.open} open</span></h2>${g.ps.map(block).join("")}${g.ts.length?`<div class="meta" style="margin-top:10px">${g.ps.length?"On other projects":"Tasks"}</div>`+g.ts.map(t=>taskRow(t,true,true)).join(""):""}${g.ps.length||g.ts.length?"":'<div class="meta" style="padding:8px 0">Nothing open.</div>'}<div class="fill"></div></div>`).join("") + `</div>`;
   wire(m);
   const rb=$("#resetOrder"); if(rb) rb.onclick=()=>{ saveOrder(null); render(); };
@@ -877,17 +889,24 @@ function renderPerson(m){
     el.ondragstart=e=>{ e.stopPropagation(); e.dataTransfer.setData("mb/task", el.dataset.task); e.dataTransfer.effectAllowed="move"; el.classList.add("dragging"); };
     el.ondragend=()=>el.classList.remove("dragging");
   });
+  m.querySelectorAll(".people .pblock").forEach(el=>{
+    el.onpointerdown=e=>{ el.draggable=!e.target.closest("button,a,input,summary,.task"); };
+    el.ondragstart=e=>{ e.stopPropagation(); e.dataTransfer.setData("mb/projowner", el.dataset.pblock); e.dataTransfer.effectAllowed="move"; el.classList.add("dragging"); };
+    el.ondragend=()=>el.classList.remove("dragging");
+  });
   let colDragging=null;
   m.querySelectorAll(".people .card").forEach(col=>{
-    col.ondragstart=e=>{ if(e.target.closest(".task")) return; colDragging=col.dataset.col; e.dataTransfer.setData("mb/column", colDragging); e.dataTransfer.effectAllowed="move"; };
+    col.ondragstart=e=>{ if(e.target.closest(".task,.pblock")) return; colDragging=col.dataset.col; e.dataTransfer.setData("mb/column", colDragging); e.dataTransfer.effectAllowed="move"; };
     col.ondragover=e=>{
       const types=[...e.dataTransfer.types];
-      if(types.includes("mb/task")){ e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("drop"); }
+      if(types.includes("mb/task")||types.includes("mb/projowner")){ e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("drop"); }
       else if(types.includes("mb/column") && col.dataset.col!==colDragging){ e.preventDefault(); const r=col.getBoundingClientRect(); const before=(e.clientX-r.left)<r.width/2; col.classList.toggle("col-before",before); col.classList.toggle("col-after",!before); }
     };
     col.ondragleave=()=>col.classList.remove("drop","col-before","col-after");
     col.ondrop=async e=>{
       e.preventDefault(); const wasBefore=col.classList.contains("col-before"); col.classList.remove("drop","col-before","col-after");
+      const pid=e.dataTransfer.getData("mb/projowner");
+      if(pid){ await reassignProject(pid, col.dataset.col===UNASSIGNED?"":col.dataset.col); return; }
       const tid=e.dataTransfer.getData("mb/task");
       if(tid){ const to=col.dataset.col===UNASSIGNED?"":col.dataset.col; const t=tasks[tid]; if(!t||(t.assignee||"")===to) return;
         await commit(to?`Reassigned task to ${to}`:"Unassigned task", fieldUpdates("tasks/"+tid,{assignee:to, ...stamp()})); return; }
