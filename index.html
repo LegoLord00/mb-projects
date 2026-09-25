@@ -297,7 +297,7 @@ Tasks belong to a project and have a title, assignee, due date, status, notes, a
 
 Timeline: a strip under the header on every tab, showing a short name and the date in date order (red when past, amber within three days), with a "today" marker between what is past and what is ahead. Two things appear on it. Anything flagged essential: the handful of projects the year depends on, and single tasks flagged essential when one deadline matters without needing its own project (a task chip shows its project under the date). And events or launches, marked with a diamond: a date something happens (a launch day, a trade show, a season start) rather than a deadline for work. Tick the box in the project or task dialog to put something on the strip. An event project is not shown on the Projects board; open it from its chip on the strip, or find it in Deadlines. When the strip fills, it scrolls sideways: drag it with the mouse, or scroll on a trackpad or phone. It opens at today; click the word Timeline to jump back there. Either kind stays on the strip until it is marked done or archived.
 
-Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; each card has an arrow to hide or show its tasks, a Pin button that keeps it at the top, and can be dragged by its title row to reorder; tasks can be dragged to reorder within their project; pin and order are shared with the whole team, the arrow is per browser), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; drag columns to reorder, drag a project block or a task onto a person to reassign it; moving a project takes the owner's tasks with it), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
+Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; each card has an arrow to hide or show its tasks, a Pin button that keeps it at the top, and can be dragged by its title row to reorder; tasks can be dragged to reorder within their project; anything nobody has placed by hand sorts by deadline, undated last, after the placed ones; pin and order are shared with the whole team, the arrow is per browser), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; drag columns to reorder, drag a project block or a task onto a person to reassign it; moving a project takes the owner's tasks with it), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
 
 Files: each project has a Files button. Upload files (quotes, photos, spreadsheets, notes; 8 MB cap, photos are shrunk automatically) or add a link to Google Drive, Docs, or Sheets. Images, PDFs, CSV, and text preview in the page; other types download. The Files tab lists every file across all projects, newest first. Storage is about 1 GB total for the whole tool, so it is for working documents, not a photo archive.
 
@@ -677,9 +677,9 @@ window.addEventListener("resize", closeMore);
 
 function teamNames(){ return Object.values(team).map(t=>t.name).filter(Boolean).sort(); }
 function optionList(sel, current){ const names=teamNames(); if(current && !names.includes(current)) names.push(current); sel.innerHTML = `<option value="">Unassigned</option>` + names.map(n=>`<option ${n===current?"selected":""}>${esc(n)}</option>`).join(""); }
-function tasksFor(pid){ return live(tasks).filter(([,t])=>t.projectId===pid).map(([id,t])=>({id,...t})).sort((a,b)=>(a.status==="done")-(b.status==="done") || ((a.order??-1e12)-(b.order??-1e12)) || (a.due||"9").localeCompare(b.due||"9")); }
-// Tasks within a project keep a shared `order` once someone drags one; unordered tasks (new ones)
-// sit at the top by due date, done tasks always at the bottom.
+function tasksFor(pid){ return live(tasks).filter(([,t])=>t.projectId===pid).map(([id,t])=>({id,...t})).sort((a,b)=>(a.status==="done")-(b.status==="done") || ((a.order??Infinity)-(b.order??Infinity)) || (a.due||"9").localeCompare(b.due||"9")); }
+// Tasks within a project keep a shared `order` once someone drags one; tasks not yet placed (new
+// ones) follow in due-date order, undated last; done tasks always at the bottom.
 function reorderTask(from,to,before){
   const pid=tasks[from]?.projectId; if(!pid||tasks[to]?.projectId!==pid) return;
   const seq=tasksFor(pid).map(t=>t.id).filter(id=>id!==from); const i=seq.indexOf(to); if(i<0) return; seq.splice(before?i:i+1,0,from);
@@ -759,14 +759,15 @@ function taskRow(t, showProject, hideAssignee){
   </div>`;
 }
 
-// Board order (since Sept 25): pinned cards first, then cards by their saved `order`, then anything
-// with no order yet (new projects, or everything before anyone has dragged) by status and deadline.
+// Board order (since Sept 25): pinned cards first; then cards someone has placed by drag, in that
+// order; then anything not yet placed (new projects, or everything before anyone has dragged) in
+// deadline order, undated last. Placing never moves what was already placed.
 // Pin and order are shared fields on the project, so the whole team sees the same board. The
 // fold arrow (hide a project's tasks) is a per-browser preference, like column order in By person.
 const STATUS_ORDER=["active","planned","idea","done"];
 // Event projects stay off the board (since Sept 25): they live on the timeline strip and in Deadlines.
 function boardList(){
-  return openProjects().map(([id,p])=>({id,...p})).filter(p=>!p.event).sort((a,b)=>(!!b.pinned-!!a.pinned) || ((a.order??-1e12)-(b.order??-1e12)) || STATUS_ORDER.indexOf(a.status)-STATUS_ORDER.indexOf(b.status) || (a.deadline||"9").localeCompare(b.deadline||"9"));
+  return openProjects().map(([id,p])=>({id,...p})).filter(p=>!p.event).sort((a,b)=>(!!b.pinned-!!a.pinned) || ((a.order??Infinity)-(b.order??Infinity)) || (a.deadline||"9").localeCompare(b.deadline||"9") || a.name.localeCompare(b.name));
 }
 function reorderProject(from,to,before){
   const seq=boardList().map(p=>p.id).filter(id=>id!==from); const i=seq.indexOf(to); if(i<0) return; seq.splice(before?i:i+1,0,from);
