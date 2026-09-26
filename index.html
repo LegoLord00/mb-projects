@@ -388,7 +388,10 @@ const db = firebase.database();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const emailKey = e => e.toLowerCase().replace(/\./g, ",");
-const today = () => new Date().toISOString().slice(0,10);
+// The business runs on Michigan time. Compute "today" in America/Detroit (Eastern, with daylight
+// saving handled) rather than UTC, so due dates do not flip red at 8 PM.
+const TZ="America/Detroit";
+const today = () => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 function toast(m){ const t=$("#toast"); t.textContent=m; t.style.pointerEvents="none"; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 function fmtDate(d){ if(!d) return ""; const [y,m,dd]=d.split("-"); return `${+m}/${+dd}/${y.slice(2)}`; }
 function dueClass(d, done){ if(!d||done) return ""; const diff=(new Date(d)-new Date(today()))/864e5; if(diff<0) return "overdue"; if(diff<=3) return "soon"; return ""; }
@@ -1027,7 +1030,7 @@ function snapshot(){
 }
 function backupJson(){ return JSON.stringify({ exportedAt:new Date().toISOString(), exportedBy:me.email, allowed:team, projects, tasks, fileMeta:files, note:"File contents (fileData) are not included; download files individually from the Files tab." }, null, 2); }
 function renderTools(m){
-  const stamp=new Date().toISOString().slice(0,10);
+  const stamp=today();
   m.innerHTML = `<div class="card"><h2>Tools</h2><p class="meta">Downloads built from the live data at the moment you click.</p>
     <div class="tool"><div><h3>Team brief</h3><p>What the tool is, how the team uses it, and the import format. Give it to a new teammate on day one, and give it to Claude or any AI assistant so it produces projects the tool can import. Includes the current team names.</p></div><div class="row"><button class="small" data-tool="brief-copy">Copy</button><button class="small primary" data-tool="brief">Download .md</button></div></div>
     <div class="tool"><div><h3>Projects snapshot</h3><p>Every open project with its tasks, owners, deadlines, and file names, as plain text. Paste it into Claude before a planning session so it knows what is already in motion and does not propose duplicates.</p></div><div class="row"><button class="small" data-tool="snap-copy">Copy</button><button class="small primary" data-tool="snap">Download .md</button></div></div>
