@@ -74,22 +74,10 @@
   .task .pill{font-size:11px;padding:1px 6px;vertical-align:1px}
   .board .card{transition:box-shadow .12s}
   .board .card.pinned{border-left:3px solid var(--accent)}
-  .board .head{cursor:grab}
-  .board .head:active{cursor:grabbing}
-  .board .head h2{user-select:none;-webkit-user-select:none}
-  .board .head .grip{color:var(--muted);font-size:14px;letter-spacing:-2px}
-  .board .card.dragging{opacity:.4}
-  .board .card.row-before{box-shadow:0 -4px 0 0 var(--accent)}
-  .board .card.row-after{box-shadow:0 4px 0 0 var(--accent)}
   button.fold{padding:2px 4px;width:22px;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;line-height:1}
   button.fold:hover{color:var(--ink)}
   .card.folded .foldable{display:none}
   button.pin.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
-  .board .task[draggable]{cursor:grab}
-  .board .task.dragging{opacity:.4}
-  .board .task.row-before{box-shadow:0 -3px 0 0 var(--accent)}
-  .board .task.row-after{box-shadow:0 3px 0 0 var(--accent)}
-  @media(max-width:700px){.board .head{cursor:default}.board .head .grip{display:none}.board .task[draggable]{cursor:default}}
   main.wide{max-width:none}
   .people{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,1fr);gap:12px;align-items:stretch;overflow-x:auto;padding-bottom:6px}
   .people .card{margin-bottom:0;min-height:calc(100vh - 230px);display:flex;flex-direction:column;transition:box-shadow .12s}
@@ -108,6 +96,7 @@
   .pblock details{margin-top:4px}
   .pblock summary{cursor:pointer;font-size:12px}
   .pblock .task{padding:6px 0}
+  .people .card > .task{border:1px solid var(--line);border-top:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:8px}
   .pblock[draggable]{cursor:grab}
   .pblock.dragging{opacity:.4}
   .pblock .grip{color:var(--muted);font-size:14px;letter-spacing:-2px;flex:none}
@@ -297,7 +286,7 @@ Tasks belong to a project and have a title, assignee, due date, status, notes, a
 
 Timeline: a strip under the header on every tab, showing a short name and the date in date order (red when past, amber within three days), with a "today" marker between what is past and what is ahead. Two things appear on it. Anything flagged essential: the handful of projects the year depends on, and single tasks flagged essential when one deadline matters without needing its own project (a task chip shows its project under the date). And events or launches, marked with a diamond: a date something happens (a launch day, a trade show, a season start) rather than a deadline for work. Tick the box in the project or task dialog to put something on the strip. An event project is not shown on the Projects board; open it from its chip on the strip, or find it in Deadlines. When the strip fills, it scrolls sideways: drag it with the mouse, or scroll on a trackpad or phone. It opens at today; click the word Timeline to jump back there. Either kind stays on the strip until it is marked done or archived.
 
-Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; each card has an arrow to hide or show its tasks, a Pin button that keeps it at the top, and can be dragged by its title row to reorder; tasks can be dragged to reorder within their project; anything nobody has placed by hand sorts by deadline, undated last, after the placed ones; pin and order are shared with the whole team, the arrow is per browser), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; drag columns to reorder, drag a project block or a task onto a person to reassign it; moving a project takes the owner's tasks with it), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
+Views in the header: Projects (board with a status filter; event projects are not on the board, only on the timeline and in Deadlines; cards sort by their nearest date, which is the earlier of the project deadline and the due date of its earliest open task, undated last; each card has an arrow to hide or show its tasks and a Pin button that keeps it at the top; pin is shared with the whole team, the arrow is per browser; there is no manual ordering), By person (one column per teammate; a project sits under its owner with its tasks inside, and a task shows on its own only when it is assigned to someone other than the project owner; projects and tasks share one list per person by nearest date (a project counts its earliest open task), undated last; drag columns to reorder, drag a project block or a task onto a person to reassign it; moving a project takes the owner's tasks with it), Deadlines (Timeline table first, then everything else), Import from Claude. Under the More menu: Team, Files, Archive, Tools, Trash.
 
 Files: each project has a Files button. Upload files (quotes, photos, spreadsheets, notes; 8 MB cap, photos are shrunk automatically) or add a link to Google Drive, Docs, or Sheets. Images, PDFs, CSV, and text preview in the page; other types download. The Files tab lists every file across all projects, newest first. Storage is about 1 GB total for the whole tool, so it is for working documents, not a photo archive.
 
@@ -680,15 +669,13 @@ window.addEventListener("resize", closeMore);
 
 function teamNames(){ return Object.values(team).map(t=>t.name).filter(Boolean).sort(); }
 function optionList(sel, current){ const names=teamNames(); if(current && !names.includes(current)) names.push(current); sel.innerHTML = `<option value="">Unassigned</option>` + names.map(n=>`<option ${n===current?"selected":""}>${esc(n)}</option>`).join(""); }
-function tasksFor(pid){ return live(tasks).filter(([,t])=>t.projectId===pid).map(([id,t])=>({id,...t})).sort((a,b)=>(a.status==="done")-(b.status==="done") || ((a.order??Infinity)-(b.order??Infinity)) || (a.due||"9").localeCompare(b.due||"9")); }
-// Tasks within a project keep a shared `order` once someone drags one; tasks not yet placed (new
-// ones) follow in due-date order, undated last; done tasks always at the bottom.
-function reorderTask(from,to,before){
-  const pid=tasks[from]?.projectId; if(!pid||tasks[to]?.projectId!==pid) return;
-  const seq=tasksFor(pid).map(t=>t.id).filter(id=>id!==from); const i=seq.indexOf(to); if(i<0) return; seq.splice(before?i:i+1,0,from);
-  const upd={}; seq.forEach((id,idx)=>{ if(tasks[id].order!==(idx+1)*10) upd["tasks/"+id+"/order"]=(idx+1)*10; });
-  return commit("Reordered tasks", upd);
-}
+// Ordering rule (Sept 29): everything sorts by date, undated last, no manual ordering. A task sorts
+// by its due date. A project sorts by its "effective date": the earlier of its own deadline and the
+// due date of its earliest open task, so a project with work due soon rises even if its deadline is far.
+function tasksFor(pid){ return live(tasks).filter(([,t])=>t.projectId===pid).map(([id,t])=>({id,...t})).sort((a,b)=>(a.status==="done")-(b.status==="done") || (a.due||"9").localeCompare(b.due||"9") || a.title.localeCompare(b.title)); }
+function nextTaskDue(pid){ const ds=live(tasks).filter(([,t])=>t.projectId===pid && t.status!=="done" && t.due).map(([,t])=>t.due).sort(); return ds[0]||""; }
+function effDate(p){ const n=nextTaskDue(p.id); return [p.deadline||"", n].filter(Boolean).sort()[0]||""; }
+const byEff=(a,b)=>(effDate(a)||"9").localeCompare(effDate(b)||"9") || a.name.localeCompare(b.name);
 
 function render(){
   renderEssential();
@@ -762,23 +749,10 @@ function taskRow(t, showProject, hideAssignee){
   </div>`;
 }
 
-// Board order (since Sept 25): pinned cards first; then cards someone has placed by drag, in that
-// order; then anything not yet placed (new projects, or everything before anyone has dragged) in
-// deadline order, undated last. Placing never moves what was already placed.
-// Pin and order are shared fields on the project, so the whole team sees the same board. The
-// fold arrow (hide a project's tasks) is a per-browser preference, like column order in By person.
-const STATUS_ORDER=["active","planned","idea","done"];
-// Event projects stay off the board (since Sept 25): they live on the timeline strip and in Deadlines.
-function boardList(){
-  return openProjects().map(([id,p])=>({id,...p})).filter(p=>!p.event).sort((a,b)=>(!!b.pinned-!!a.pinned) || ((a.order??Infinity)-(b.order??Infinity)) || (a.deadline||"9").localeCompare(b.deadline||"9") || a.name.localeCompare(b.name));
-}
-function reorderProject(from,to,before){
-  const seq=boardList().map(p=>p.id).filter(id=>id!==from); const i=seq.indexOf(to); if(i<0) return; seq.splice(before?i:i+1,0,from);
-  const upd={};
-  if(!!projects[from].pinned!==!!projects[to].pinned) upd["projects/"+from+"/pinned"]=!!projects[to].pinned; // dropped among pinned cards: pin it; among unpinned: unpin
-  seq.forEach((id,idx)=>{ if(projects[id].order!==(idx+1)*10) upd["projects/"+id+"/order"]=(idx+1)*10; });
-  return commit("Reordered projects", upd);
-}
+// Board order: pinned cards first, then by effective date (see effDate), undated last. Event projects
+// stay off the board; they live on the timeline strip and in Deadlines. No manual ordering (removed
+// Sept 29). Pin is a shared field; the fold arrow is a per-browser preference.
+function boardList(){ return openProjects().map(([id,p])=>({id,...p})).filter(p=>!p.event).sort((a,b)=>(!!b.pinned-!!a.pinned) || byEff(a,b)); }
 function pinProject(id){ const on=!projects[id].pinned; return commit(on?"Pinned project":"Unpinned project", { ["projects/"+id+"/pinned"]: on }); }
 const foldKey = () => "mb-folded:" + (me?.email||"").toLowerCase();
 function loadFolded(){ try { return new Set(JSON.parse(localStorage.getItem(foldKey())||"[]")); } catch(e){ return new Set(); } }
@@ -787,12 +761,12 @@ function renderBoard(m){
   const folded=loadFolded();
   const list=boardList().filter(p=>!statusFilter||p.status===statusFilter);
   m.innerHTML = `<div class="filters"><button class="primary" id="newProj">+ New project</button>
-    <select id="statusFilter"><option value="">All statuses</option>${["idea","planned","active","done"].map(s=>`<option value="${s}" ${statusFilter===s?"selected":""}>${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select><span class="meta">Drag a title row to reorder. Pin keeps a project at the top.</span></div>` +
+    <select id="statusFilter"><option value="">All statuses</option>${["idea","planned","active","done"].map(s=>`<option value="${s}" ${statusFilter===s?"selected":""}>${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select><span class="meta">Sorted by the nearest date, a deadline or an open task. Pin keeps a project at the top.</span></div>` +
     `<div class="board">` + (list.length? list.map(p=>{
       const ts=tasksFor(p.id); const done=ts.filter(t=>t.status==="done").length; const isF=folded.has(p.id);
       const others=new Set(ts.map(t=>t.assignee||p.owner||"").filter(n=>n && n!==(p.owner||""))); // people other than the owner working on it
-      return `<div class="card ${p.pinned?"pinned":""} ${isF?"folded":""}" data-proj="${p.id}"><div class="row head" draggable="true"><span class="grip" title="Drag to reorder">&#8942;&#8942;</span><button class="fold" data-fold="${p.id}" title="${isF?"Show tasks":"Hide tasks"}" aria-expanded="${!isF}">${isF?"\u25B8":"\u25BE"}</button><h2 style="flex:1">${esc(p.name)}</h2>${p.essential?`<span class="pill essential" title="Essential to the yearly goal">essential</span>`:""}${p.event?`<span class="pill event" title="Event or launch">\u25C6 event</span>`:""}<span class="pill ${p.status}">${p.status}</span><button class="small pin ${p.pinned?"on":""}" data-pin="${p.id}" title="${p.pinned?"Unpin: let it sort normally":"Pin to the top of the board"}">${p.pinned?"Pinned":"Pin"}</button>${p.status==="done"?`<button class="small" data-archive-proj="${p.id}">Archive</button>`:""}<button class="small" data-edit-proj="${p.id}">Edit</button></div>
-        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · <span class="${dueClass(p.deadline,p.status==="done")}">${p.event?"on":"deadline"} ${fmtDate(p.deadline)}</span> ${calLink("MB: "+p.name,p.deadline,p.description)}`:""} · ${done}/${ts.length} tasks done${isF&&ts.length-done?` · <span class="meta">${ts.length-done} open, hidden</span>`:""}</div>
+      return `<div class="card ${p.pinned?"pinned":""} ${isF?"folded":""}" data-proj="${p.id}"><div class="row head"><button class="fold" data-fold="${p.id}" title="${isF?"Show tasks":"Hide tasks"}" aria-expanded="${!isF}">${isF?"\u25B8":"\u25BE"}</button><h2 style="flex:1">${esc(p.name)}</h2>${p.essential?`<span class="pill essential" title="Essential to the yearly goal">essential</span>`:""}${p.event?`<span class="pill event" title="Event or launch">\u25C6 event</span>`:""}<span class="pill ${p.status}">${p.status}</span><button class="small pin ${p.pinned?"on":""}" data-pin="${p.id}" title="${p.pinned?"Unpin: let it sort normally":"Pin to the top of the board"}">${p.pinned?"Pinned":"Pin"}</button>${p.status==="done"?`<button class="small" data-archive-proj="${p.id}">Archive</button>`:""}<button class="small" data-edit-proj="${p.id}">Edit</button></div>
+        <div class="meta">${p.owner?`Owner: ${esc(p.owner)}`:"No owner"}${p.deadline?` · <span class="${dueClass(p.deadline,p.status==="done")}">${p.event?"on":"deadline"} ${fmtDate(p.deadline)}</span> ${calLink("MB: "+p.name,p.deadline,p.description)}`:""}${(n=>n&&(!p.deadline||n<p.deadline)?` · <span class="${dueClass(n,false)}">next task due ${fmtDate(n)}</span>`:"")(nextTaskDue(p.id))} · ${done}/${ts.length} tasks done${isF&&ts.length-done?` · <span class="meta">${ts.length-done} open, hidden</span>`:""}</div>
         <div class="foldable">${p.description?`<p style="margin:8px 0">${esc(p.description)}</p>`:""}
         ${ts.map(t=>taskRow(t,false,!others.size)).join("")}
         <div class="row" style="margin-top:8px"><button class="small" data-new-task="${p.id}">+ Task</button><button class="small" data-files="${p.id}">Files${filesFor(p.id).length?` (${filesFor(p.id).length})`:""}</button></div></div></div>`;
@@ -802,43 +776,6 @@ function renderBoard(m){
   wire(m);
   m.querySelectorAll("[data-fold]").forEach(b=>b.onclick=()=>toggleFold(b.dataset.fold));
   m.querySelectorAll("[data-pin]").forEach(b=>b.onclick=()=>pinProject(b.dataset.pin));
-  let projDragging=null;
-  m.querySelectorAll(".board .card").forEach(card=>{
-    const head=card.querySelector(".head"); const id=card.dataset.proj;
-    head.onpointerdown=e=>{ head.draggable=!e.target.closest("button,a"); };
-    head.ondragstart=e=>{ projDragging=id; e.dataTransfer.setData("mb/project",id); e.dataTransfer.effectAllowed="move"; card.classList.add("dragging"); };
-    head.ondragend=()=>{ projDragging=null; card.classList.remove("dragging"); m.querySelectorAll(".row-before,.row-after").forEach(c=>c.classList.remove("row-before","row-after")); };
-    card.ondragover=e=>{
-      if(![...e.dataTransfer.types].includes("mb/project") || id===projDragging) return;
-      e.preventDefault(); e.dataTransfer.dropEffect="move"; const r=card.getBoundingClientRect(); const before=(e.clientY-r.top)<r.height/2;
-      card.classList.toggle("row-before",before); card.classList.toggle("row-after",!before);
-    };
-    card.ondragleave=()=>card.classList.remove("row-before","row-after");
-    card.ondrop=async e=>{
-      e.preventDefault(); const wasBefore=card.classList.contains("row-before"); card.classList.remove("row-before","row-after");
-      const from=e.dataTransfer.getData("mb/project"); if(!from||from===id) return;
-      await reorderProject(from,id,wasBefore);
-    };
-    // Tasks: drag a row onto another row in the same project to reorder.
-    card.querySelectorAll(".task").forEach(row=>{
-      const tid=row.dataset.task; row.setAttribute("draggable","true");
-      row.onpointerdown=e=>{ row.draggable=!e.target.closest("button,a,input"); };
-      row.ondragstart=e=>{ e.stopPropagation(); e.dataTransfer.setData("mb/taskorder", tid+"|"+id); e.dataTransfer.effectAllowed="move"; row.classList.add("dragging"); };
-      row.ondragend=()=>{ row.classList.remove("dragging"); card.querySelectorAll(".task.row-before,.task.row-after").forEach(r=>r.classList.remove("row-before","row-after")); };
-      row.ondragover=e=>{
-        if(![...e.dataTransfer.types].includes("mb/taskorder")) return;
-        e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect="move"; const r=row.getBoundingClientRect(); const before=(e.clientY-r.top)<r.height/2;
-        row.classList.toggle("row-before",before); row.classList.toggle("row-after",!before);
-      };
-      row.ondragleave=()=>row.classList.remove("row-before","row-after");
-      row.ondrop=async e=>{
-        if(![...e.dataTransfer.types].includes("mb/taskorder")) return; // a project drag: let the card handle it
-        e.preventDefault(); e.stopPropagation(); const wasBefore=row.classList.contains("row-before"); row.classList.remove("row-before","row-after");
-        const [from,fromProj]=(e.dataTransfer.getData("mb/taskorder")||"").split("|"); if(!from||from===tid||fromProj!==id) return;
-        await reorderTask(from,tid,wasBefore);
-      };
-    });
-  });
 }
 
 // ---------- By person ----------
@@ -878,15 +815,18 @@ function renderPerson(m){
       const mine=all.filter(t=>t.projectId===p.id && ownerOf(t)===key).sort(byDue);
       const helpers={}; all.filter(t=>t.projectId===p.id && ownerOf(t)!==key).forEach(t=>{ const h=ownerOf(t); helpers[h]=(helpers[h]||0)+1; });
       return {p,mine,helpers};
-    }).sort((a,b)=>(a.p.deadline||"9").localeCompare(b.p.deadline||"9"));
+    }).sort((a,b)=>byEff(a.p,b.p));
     const ts=all.filter(t=>ownerOf(t)===key && ((projects[t.projectId]?.owner||"")!==key || projects[t.projectId]?.event)).sort(byDue);
     return {n, ps, ts, open: ps.reduce((s,x)=>s+x.mine.length,0)+ts.length};
   });
   const block=x=>`<div class="pblock" data-pblock="${x.p.id}" draggable="true" title="Drag onto a person to change the owner"><div class="row" style="flex-wrap:nowrap"><span class="grip" title="Drag to reassign">&#8942;&#8942;</span><b style="flex:1">${esc(x.p.name)}</b><button class="small" data-edit-proj="${x.p.id}">Edit</button></div>
-      <div class="meta">${[x.p.deadline?`<span class="${dueClass(x.p.deadline,false)}">deadline ${fmtDate(x.p.deadline)}</span>`:"", x.mine.length?`${x.mine.length} open task${x.mine.length===1?"":"s"}`:"no open tasks", Object.keys(x.helpers).length?`with ${Object.entries(x.helpers).map(([h,c])=>`${esc(h||UNASSIGNED)} (${c})`).join(", ")}`:""].filter(Boolean).join(" \u00b7 ")}</div>
+      <div class="meta">${[x.p.deadline?`<span class="${dueClass(x.p.deadline,false)}">deadline ${fmtDate(x.p.deadline)}</span>`:"", (n=>n&&(!x.p.deadline||n<x.p.deadline)?`<span class="${dueClass(n,false)}">next task due ${fmtDate(n)}</span>`:"")(nextTaskDue(x.p.id)), x.mine.length?`${x.mine.length} open task${x.mine.length===1?"":"s"}`:"no open tasks", Object.keys(x.helpers).length?`with ${Object.entries(x.helpers).map(([h,c])=>`${esc(h||UNASSIGNED)} (${c})`).join(", ")}`:""].filter(Boolean).join(" \u00b7 ")}</div>
       ${x.mine.length?`<details open><summary class="meta">Tasks</summary>${x.mine.map(t=>taskRow(t,false,true)).join("")}<button class="small" data-new-task="${x.p.id}" style="margin-top:6px">+ Task</button></details>`:`<button class="small" data-new-task="${x.p.id}" style="margin-top:6px">+ Task</button>`}</div>`;
-  m.innerHTML = `<div class="people-bar"><span>A project sits under its owner with its tasks inside. A task shows on its own only when it is assigned to someone else. Drag a column header to reorder; drag a project block or a task onto a person to reassign it.</span>${custom?`<button class="small" id="resetOrder">Reset order</button>`:""}</div>` +
-    `<div class="people">` + groups.map(g=>`<div class="card" data-col="${esc(g.n)}" draggable="true"><h2><span class="grip" title="Drag to reorder">&#8942;&#8942;</span>${esc(g.n)}<span class="meta">${g.open} open</span></h2>${g.ps.map(block).join("")}${g.ts.length?`<div class="meta" style="margin-top:10px">${g.ps.length?"On other projects":"Tasks"}</div>`+g.ts.map(t=>taskRow(t,true,true)).join(""):""}${g.ps.length||g.ts.length?"":'<div class="meta" style="padding:8px 0">Nothing open.</div>'}<div class="fill"></div></div>`).join("") + `</div>`;
+  // One list per column, projects and loose tasks together, by date (project deadline or task due), undated last.
+  const columnItems=g=>[...g.ps.map(x=>({d:effDate(x.p), n:x.p.name, html:block(x)})), ...g.ts.map(t=>({d:t.due||"", n:t.title, html:taskRow(t,true,true)}))]
+    .sort((a,b)=>(a.d||"9").localeCompare(b.d||"9") || a.n.localeCompare(b.n)).map(i=>i.html).join("");
+  m.innerHTML = `<div class="people-bar"><span>A project sits under its owner with its tasks inside. A task shows on its own only when it is assigned to someone else. Everything is in date order by its nearest date (a project counts its earliest open task), undated last. Drag a column header to reorder; drag a project block or a task onto a person to reassign it.</span>${custom?`<button class="small" id="resetOrder">Reset order</button>`:""}</div>` +
+    `<div class="people">` + groups.map(g=>`<div class="card" data-col="${esc(g.n)}" draggable="true"><h2><span class="grip" title="Drag to reorder">&#8942;&#8942;</span>${esc(g.n)}<span class="meta">${g.open} open</span></h2>${columnItems(g)}${g.ps.length||g.ts.length?"":'<div class="meta" style="padding:8px 0">Nothing open.</div>'}<div class="fill"></div></div>`).join("") + `</div>`;
   wire(m);
   const rb=$("#resetOrder"); if(rb) rb.onclick=()=>{ saveOrder(null); render(); };
   m.querySelectorAll(".people .task").forEach(el=>{ el.setAttribute("draggable","true");
@@ -922,7 +862,7 @@ function renderPerson(m){
 
 function renderDeadlines(m){
   const items=[];
-  openProjects().forEach(([id,p])=>{ if(p.deadline&&p.status!=="done") items.push({ess:!!(p.essential||p.event),kind:p.event?"Event":"Project",date:p.deadline,title:p.name,who:p.owner,cal:calLink("MB: "+p.name,p.deadline,p.description),edit:`data-edit-proj="${id}"`}); });
+  openProjects().forEach(([id,p])=>{ const d=effDate({id,...p}); if(d&&p.status!=="done") items.push({ess:!!(p.essential||p.event),kind:p.event?"Event":"Project",date:d,title:p.name,who:p.owner,sub:d!==p.deadline?`next task due; deadline ${p.deadline?fmtDate(p.deadline):"not set"}`:"",cal:p.deadline?calLink("MB: "+p.name,p.deadline,p.description):"",edit:`data-edit-proj="${id}"`}); });
   openTasks().forEach(([id,t])=>{ const p=projects[t.projectId]; if(t.due&&t.status!=="done") items.push({ess:!!(t.essential||t.event||p?.essential||p?.event),kind:t.event?"Event":"Task",date:t.due,title:t.title,who:t.assignee,sub:p?.name,cal:calLink("MB: "+t.title,t.due,p?.name),edit:`data-edit-task="${id}"`}); });
   items.sort((a,b)=>a.date.localeCompare(b.date));
   const table = list => `<table><thead><tr><th>Date</th><th>What</th><th>Who</th><th></th></tr></thead><tbody>`+
