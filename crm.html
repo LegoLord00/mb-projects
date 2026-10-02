@@ -342,6 +342,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 // ===== CONFIG: same Firebase project as the Projects page =====
 const firebaseConfig = {
@@ -585,7 +586,7 @@ auth.onAuthStateChanged(async user => {
 const refs = {}; let backfilled=false;
 function attach(){
   refs.c = db.ref("clients"); refs.l = db.ref("clientLog"); refs.t = db.ref("contractTemplates"); refs.q = db.ref("sync/qb");
-  refs.c.on("value", s => { clients = s.val()||{}; render(); if(openId) refreshDialogLive(); if(!backfilled){ backfilled=true; backfillPhones(); } });
+  refs.c.on("value", s => { clients = s.val()||{}; render(); if(openId) refreshDialogLive(); if(!backfilled){ backfilled=true; backfillPhones(); } driveNag(); });
   refs.l.on("value", s => { logs = s.val()||{}; render(); if(openId) renderLog(); });
   refs.t.on("value", s => { templates = s.val()||{}; render(); if(openId) renderContracts(); });
   refs.q.on("value", s => { qbRows = s.val()||{}; if(view==="tools") render(); });
@@ -1082,6 +1083,7 @@ $("#signClose").onclick = () => $("#signDlg").close();
 $("#signDlg").addEventListener("cancel", e => { if(signCtx && signCtx.mode==="sign" && signCtx.pad && !signCtx.pad.isEmpty()){ e.preventDefault(); toast("Use Close to leave without signing"); } });
 $("#signDlg").onclose = () => { signCtx=null; $("#signBody").innerHTML=""; };
 async function openSigning(clientId, tid, sid){
+  askDriveToken().catch(()=>{}); // must start inside the tap; a refusal here never blocks signing
   const c=clients[clientId], t=templates[tid], s={sid,...(c?.services||{})[sid]};
   if(!c || !t || !s.type) return toast("That contract is no longer available");
   if(dialogDirty()) return toast("Save the client first, then open the contract.");
@@ -1181,7 +1183,19 @@ async function lockContract(){
     return toast("Not saved. Check the connection and press Sign and lock again. ("+(e.code||e.message)+")");
   }
   toast("Signed and locked.");
-  viewContract(S.clientId, cid, { ...payload, status:"signed", hash });
+  const rec={ ...payload, status:"signed", hash };
+  await viewContract(S.clientId, cid, rec);
+  driveStatus(S.clientId, cid, rec, true);
+}
+// Status line on the contract screen: saves to Drive when asked, or shows where the copy is.
+async function driveStatus(clientId, cid, rec, start){
+  const box=$("#cvDrive"); if(!box) return;
+  const m=clients[clientId]?.contracts?.[cid]||{}; const done = rec.voided ? m.driveVoid : m.drive;
+  if(done && !start){ box.innerHTML=`Copy saved in Google Drive${done.link?` · <a href="${esc(done.link)}" target="_blank" rel="noopener">open</a>`:""}`; return; }
+  if(!start){ box.innerHTML=`Not in Google Drive yet. <button type="button" class="small" id="cvDriveGo">Save to Drive</button>`; $("#cvDriveGo").onclick=()=>{ askDriveToken().catch(()=>{}); driveStatus(clientId,cid,rec,true); }; return; }
+  box.textContent="Saving a copy to Google Drive…";
+  try{ const f=await saveContractToDrive(clientId, cid, rec); if($("#cvDrive")===box) box.innerHTML=`Copy saved in Google Drive${f.webViewLink?` · <a href="${esc(f.webViewLink)}" target="_blank" rel="noopener">open</a>`:""}`; }
+  catch(e){ if($("#cvDrive")===box){ box.innerHTML=`Not in Google Drive yet: ${esc(e.message)} <button type="button" class="small" id="cvDriveGo">Save to Drive</button>`; $("#cvDriveGo").onclick=()=>{ askDriveToken().catch(()=>{}); driveStatus(clientId,cid,rec,true); }; } }
 }
 
 // ---------- viewing a signed contract ----------
@@ -1206,29 +1220,140 @@ async function viewContract(clientId, cid, recIn){
     <div class="signpanel">
       <div class="row"><button type="button" class="primary" id="cvPrint">Print or save PDF</button>${mail?`<a href="${mail}" class="small" style="text-decoration:none"><button type="button">Email the client</button></a>`:`<span class="meta">No email on file for this client.</span>`}
       <span style="margin-left:auto"></span>${rec.voided?"":`<button type="button" class="danger" id="cvVoid">Void</button>`}</div>
+      <p class="meta" id="cvDrive" style="margin:8px 0 0"></p>
       <p class="meta" style="margin:8px 0 0">To give the client a copy: Print or save PDF, then Save to Files, then attach that PDF to the email. ${rec.payStatus==="paid"?`Payment recorded: ${esc(rec.payMethod||"")}.`:"Not paid at signing."}</p>
       <div id="cvVoidBox" hidden style="margin-top:10px"><label>Reason for voiding (kept with the record)</label><input id="cvVoidReason" placeholder="Wrong price, client changed package..."><div class="actions"><button type="button" id="cvVoidCancel">Keep it</button><button type="button" class="danger" id="cvVoidGo">Void this contract</button></div></div>
     </div>`;
   if(!$("#signDlg").open) $("#signDlg").showModal();
   $("#signBody").scrollTop=0;
+  driveStatus(clientId, cid, rec, false);
   $("#cvPrint").onclick = () => { $("#printArea").innerHTML = `<div class="doc">${contractDocHtml(rec)}</div>`; window.print(); };
   if($("#cvVoid")){
     $("#cvVoid").onclick = () => { $("#cvVoidBox").hidden=false; $("#cvVoidReason").focus(); };
     $("#cvVoidCancel").onclick = () => { $("#cvVoidBox").hidden=true; };
     $("#cvVoidGo").onclick = async () => {
       const reason=$("#cvVoidReason").value.trim(); if(!reason) return toast("Give a reason for voiding.");
+      askDriveToken().catch(()=>{});
       const now=Date.now();
       try{
         await db.ref().update({ [`contracts/${clientId}/${cid}/voided`]:true, [`contracts/${clientId}/${cid}/voidedAt`]:now, [`contracts/${clientId}/${cid}/voidedBy`]:me.email, [`contracts/${clientId}/${cid}/voidReason`]:reason,
           [`clients/${clientId}/contracts/${cid}/voided`]:true,
           [`clientLog/${clientId}/${db.ref("clientLog").push().key}`]:{ text:`Voided ${rec.tplName}: ${reason}`, at:now, by:me.email, source:"contract" } });
         toast("Voided. Open the client to sign a corrected contract.");
-        viewContract(clientId, cid);
+        await viewContract(clientId, cid);
+        if(clients[clientId]?.contracts?.[cid]?.drive) driveStatus(clientId, cid, { ...rec, voided:true, voidedAt:now, voidedBy:me.email, voidReason:reason }, true);
       }catch(e){ toast("Could not void: "+(e.code||e.message)); }
     };
   }
 }
 window.addEventListener("afterprint", () => { $("#printArea").innerHTML=""; });
+
+// ---------- Google Drive: a copy of every signed contract ----------
+// Each signed contract is saved twice: the locked record in Firebase, and a PDF plus the exact record (.json)
+// in Google Drive under "Mangiapane Brothers Signed Contracts / <client>". The page uses the signed-in admin's
+// own Google account with the drive.file permission, so it can only see and write the files it creates.
+// Firebase is saved first; a Drive problem never blocks or undoes a signing. Anything not yet in Drive is
+// listed in More > Contracts with a Save to Drive button.
+const GOOGLE_CLIENT_ID = "246828597156-sbqa379jpab2gt4pft7doksnfuspsfrb.apps.googleusercontent.com";
+const DRIVE_ROOT_NAME = "Mangiapane Brothers Signed Contracts";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+let driveTok=null, driveTokExp=0, driveClient=null, driveTokPending=null, driveRootId=null;
+const driveReady = () => !!driveTok && Date.now() < driveTokExp - 60000;
+// Call this inside a tap or click. The first time each hour, Google may show a small permission window.
+function askDriveToken(){
+  if(driveReady()) return Promise.resolve(driveTok);
+  if(driveTokPending) return driveTokPending;
+  driveTokPending = new Promise((res,rej)=>{
+    try{
+      if(!window.google?.accounts?.oauth2) throw new Error("Google sign-in did not load");
+      driveClient = google.accounts.oauth2.initTokenClient({ client_id:GOOGLE_CLIENT_ID, scope:DRIVE_SCOPE, hint:me?.email||"",
+        callback: r => { if(r.error) return rej(new Error(r.error_description||r.error)); driveTok=r.access_token; driveTokExp=Date.now()+(+r.expires_in||3600)*1000; res(driveTok); },
+        error_callback: e => rej(new Error(e?.type==="popup_closed" ? "The Google permission window was closed" : (e?.message||e?.type||"Google Drive permission was not given"))) });
+      driveClient.requestAccessToken({ prompt:"" });
+    }catch(e){ rej(e); }
+  }).finally(()=>{ driveTokPending=null; });
+  driveTokPending.catch(()=>{});
+  return driveTokPending;
+}
+async function driveFetch(url, opts={}){
+  const r = await fetch(url, {...opts, headers:{...(opts.headers||{}), Authorization:"Bearer "+driveTok}});
+  if(!r.ok){ if(r.status===401){ driveTok=null; } throw new Error("Google Drive said "+r.status+(r.status===401?" (permission expired)":"")); }
+  return r.json();
+}
+const driveQ = s => String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+async function driveFolder(name, parent, clientId){
+  const q = (clientId ? `appProperties has { key='mbClient' and value='${driveQ(clientId)}' }` : `name='${driveQ(name)}'`) +
+    ` and mimeType='application/vnd.google-apps.folder' and trashed=false` + (parent ? ` and '${parent}' in parents` : "");
+  const hit = (await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id)&q="+encodeURIComponent(q))).files?.[0];
+  if(hit) return hit.id;
+  const meta = { name, mimeType:"application/vnd.google-apps.folder", ...(parent?{parents:[parent]}:{}), ...(clientId?{appProperties:{mbClient:clientId}}:{}) };
+  return (await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(meta) })).id;
+}
+async function driveUpload(name, blob, parent, cid){
+  const fd = new FormData();
+  fd.append("metadata", new Blob([JSON.stringify({ name, parents:[parent], appProperties:{mbContract:cid} })], {type:"application/json"}));
+  fd.append("file", blob, name);
+  return driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", { method:"POST", body:fd });
+}
+let pdfLibs=null;
+function loadScript(src){ return new Promise((res,rej)=>{ const el=document.createElement("script"); el.src=src; el.onload=res; el.onerror=()=>rej(new Error("Could not load the PDF maker. Check the connection.")); document.head.appendChild(el); }); }
+function loadPdfLibs(){ if(!pdfLibs) pdfLibs = Promise.all([loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"), loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js")]).catch(e=>{ pdfLibs=null; throw e; }); return pdfLibs; }
+// The same layout the client saw, drawn onto letter pages.
+async function contractPdf(rec){
+  await loadPdfLibs();
+  const host=document.createElement("div"); host.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff";
+  host.innerHTML=`<div class="doc" style="border:0;border-radius:0">${contractDocHtml(rec)}</div>`; document.body.appendChild(host);
+  try{
+    const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:"#ffffff",logging:false});
+    const pdf=new window.jspdf.jsPDF({unit:"pt",format:"letter"});
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), m=36, w=pw-2*m, k=w/canvas.width, step=Math.floor((ph-2*m)/k);
+    for(let y=0,i=0; y<canvas.height; y+=step,i++){
+      const sl=document.createElement("canvas"); sl.width=canvas.width; sl.height=Math.min(step, canvas.height-y);
+      sl.getContext("2d").drawImage(canvas,0,y,canvas.width,sl.height,0,0,canvas.width,sl.height);
+      if(i) pdf.addPage(); pdf.addImage(sl.toDataURL("image/jpeg",0.92),"JPEG",m,m,w,sl.height*k);
+    }
+    pdf.setProperties({ title:`${rec.tplName}, ${rec.signerName}, ${rec.signedDate}`, author:COMPANY });
+    return pdf.output("blob");
+  } finally { host.remove(); }
+}
+// Saves one contract (or its VOIDED copy) to Drive and notes it on the client record.
+async function saveContractToDrive(clientId, cid, rec){
+  if(!driveReady()){ if(driveTokPending) await driveTokPending; else throw new Error("Google Drive permission is needed. Press Save to Drive."); }
+  if(!rec) rec=(await db.ref("contracts/"+clientId+"/"+cid).once("value")).val();
+  if(!rec) throw new Error("Contract not found");
+  if(!driveRootId) driveRootId = await driveFolder(DRIVE_ROOT_NAME, null, null);
+  const cname = String(clients[clientId]?.name || rec.signerName || "Client").replace(/[\\/:*?"<>|]/g,"-").trim() || "Client";
+  const folder = await driveFolder(cname, driveRootId, clientId);
+  const base = [rec.signedDate, rec.tplName, cname].join(" ") + (rec.voided?" VOIDED":"") + (rec.sample?" SAMPLE":"");
+  const pdf = await driveUpload(base+".pdf", await contractPdf(rec), folder, cid);
+  await driveUpload(base+".json", new Blob([JSON.stringify(rec,null,2)],{type:"application/json"}), folder, cid);
+  await db.ref(`clients/${clientId}/contracts/${cid}/${rec.voided?"driveVoid":"drive"}`).set({ pdfId:pdf.id, link:pdf.webViewLink||"", savedAt:Date.now(), by:me.email });
+  return pdf;
+}
+// Signed contracts with no Drive copy yet (and voided ones whose VOIDED copy is missing).
+function driveMissing(){
+  const out=[];
+  Object.entries(clients).forEach(([id,c])=>Object.entries(c.contracts||{}).forEach(([cid,m])=>{
+    if(m.status!=="signed") return;
+    if(!m.drive || (m.voided && !m.driveVoid)) out.push({clientId:id, cid, m, name:c.name});
+  }));
+  return out.sort((a,b)=>a.m.signedAt-b.m.signedAt);
+}
+async function saveMissingToDrive(btn){
+  const list=driveMissing(); if(!list.length) return toast("Everything is already in Google Drive.");
+  const tok=askDriveToken(); if(btn){ btn.disabled=true; btn.textContent="Saving…"; }
+  let ok=0, fail=null;
+  try{ await tok; }catch(e){ fail=e; }
+  if(!fail) for(const x of list){ try{ await saveContractToDrive(x.clientId, x.cid); ok++; }catch(e){ fail=e; break; } }
+  if(btn){ btn.disabled=false; btn.textContent="Save to Drive"; }
+  toast(fail ? `Saved ${ok}. Stopped: ${fail.message}` : `Saved ${ok} contract${ok===1?"":"s"} to Google Drive.`);
+  render();
+}
+let driveNagged=false;
+function driveNag(){
+  if(driveNagged || !Object.keys(clients).length) return; driveNagged=true;
+  const n=driveMissing().length; if(n) setTimeout(()=>toast(`${n} signed contract${n===1?" is":"s are"} not in Google Drive yet. More > Contracts > Save to Drive.`), 1500);
+}
 
 // ---------- Contracts view: templates and your countersignature ----------
 let tplEditing=null;
@@ -1243,8 +1368,11 @@ function renderContractsView(m){
       <td>${Object.keys(t.services||{}).map(k=>`<span class="tag ${k}">${esc(SERVICE_TYPES[k]?.label||k)}</span>`).join(" ")}</td><td>${t.version||1}</td><td>${t.active===false?'<span class="pill paused">Off</span>':'<span class="pill active">Active</span>'}</td>
       <td class="num"><button class="small" data-tpl="${id}">Edit</button></td></tr>`).join("") || `<tr><td colspan="5" class="empty">No templates yet.</td></tr>`}
     </tbody></table></div>
+    <div class="card"><h2>Google Drive copies</h2>${(()=>{ const n=driveMissing().length; return `<p class="meta">Every signed contract is also saved as a PDF and an exact record in your Google Drive folder "${esc(DRIVE_ROOT_NAME)}", one folder per client.</p>` +
+      (n ? `<div class="warnline">${n} signed contract${n===1?" is":"s are"} not in Google Drive yet. <button class="small primary" id="driveAll">Save to Drive</button></div>` : `<p class="meta">All signed contracts are in Google Drive.</p>`); })()}</div>
     <div class="card"><h2>Your countersignature</h2><p class="meta">Drawn once and applied to every contract you lock. Each admin keeps his own.</p><div id="mySigBox" class="meta">Loading…</div></div>`;
   $("#tplNew").onclick = () => openTemplate(null);
+  if($("#driveAll")) $("#driveAll").onclick = e => saveMissingToDrive(e.currentTarget);
   m.querySelectorAll("[data-tpl]").forEach(b=>b.onclick=()=>openTemplate(b.dataset.tpl));
   loadMySig().then(sig=>{
     const box=$("#mySigBox"); if(!box) return;
