@@ -31,6 +31,10 @@
   header .tag{font-size:12px;opacity:.85}
   header .spacer{flex:1}
   header .who{font-size:13px;opacity:.9}
+  header a.xlink{color:var(--header-ink);opacity:.8;font-size:13px;text-decoration:none;white-space:nowrap}
+  header a.xlink:hover{opacity:1;text-decoration:underline}
+  header a.xlink.here{opacity:1;font-weight:650;text-decoration:underline}
+  header .right{flex-wrap:wrap}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:var(--r);font-weight:500}
   button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   button.small{padding:4px 9px;font-size:13px}
@@ -192,6 +196,9 @@
     </div>
   </nav>
   <div class="right">
+    <a class="xlink here" href="./index.html">Projects</a>
+    <a class="xlink" href="./crm.html">CRM</a>
+    <a class="xlink" href="./routes.html">Routes</a>
     <div class="who" id="who"></div>
     <button class="ghost small" id="undoBtn" hidden>Undo</button>
     <button class="ghost small" id="signout" hidden>Sign out</button>
@@ -296,7 +303,7 @@ Trash: deleting a project, task, or file moves it to Trash. Trash has Restore an
 
 Undo: after any action, an Undo appears in the header and in the pop-up notice for eight seconds. Ctrl+Z or Cmd+Z also works. Undo covers only your own actions in that browser tab. "Delete forever" on a file cannot be undone.
 
-Everyone on the Team list has the same rights. The only restriction is that Russel's admin entry cannot be removed.
+The Team list is the one sign-in list for every page. Each person has an access level: admin (Projects and the CRM), crew (the Employee View), or walker (the door hanger Routes page). Only admins can change the list, and Russel's entry cannot be removed.
 
 ## Team conventions
 
@@ -368,6 +375,9 @@ const firebaseConfig = {
   appId: "1:246828597156:web:dfa85db16f51d85b5fcb31"
 };
 const ADMIN_EMAIL = "russel.mangiapaneiii@gmail.com";
+// Clearance tiers on the team list. Admin uses this page and the CRM; crew and walkers are sent to their own page.
+const TIERS = { admin:"Admin: Projects, CRM, all data", crew:"Crew: Employee View only", walker:"Walker: Routes only" };
+const TIER_HOME = { admin:"index.html", crew:"my.html", walker:"routes.html" };
 // ================================================================
 
 firebase.initializeApp(firebaseConfig);
@@ -412,16 +422,22 @@ auth.onAuthStateChanged(async user => {
   $("#nav").hidden = !user;
   if(!user) $("#essential").hidden = true;
   if(!user){ $("#gate").hidden=false; $("#app").hidden=true; detach(); return; }
-  if(isAdmin){
-    // bootstrap the admin into the allowlist so the read rules pass
-    await db.ref("allowed/"+emailKey(user.email)).update({ name: user.displayName || "Russel", email: user.email.toLowerCase() });
-  }
+  const deny = m => { $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#gateMsg").textContent = m; };
   try {
-    await db.ref("allowed/"+emailKey(user.email)).once("value");
+    if(isAdmin){
+      // bootstrap the admin into the allowlist so the read rules pass, then give pre-tier entries the admin tier (one time)
+      await db.ref("allowed/"+emailKey(user.email)).update({ name: user.displayName || "Russel", email: user.email.toLowerCase(), tier: "admin" });
+      try { const all=(await db.ref("allowed").once("value")).val()||{}; const upd={}; for(const [k,v] of Object.entries(all)) if(v && !v.tier) upd["allowed/"+k+"/tier"]="admin"; if(Object.keys(upd).length) await db.ref().update(upd); } catch(e){}
+    }
+    const mine = (await db.ref("allowed/"+emailKey(user.email)).once("value")).val();
+    if(!mine) return deny(`${user.email} is not on the team list. Ask Russel to add it, then sign out and back in.`);
+    if(mine.tier !== "admin"){
+      if(TIER_HOME[mine.tier]){ location.replace(TIER_HOME[mine.tier]); return; }
+      return deny(`${user.email} is on the list but has no access level yet. Ask Russel to open this page once, then try again.`);
+    }
     $("#gate").hidden=true; $("#app").hidden=false; attach();
   } catch(e){
-    $("#gate").hidden=false; $("#app").hidden=true;
-    $("#gateMsg").textContent = `${user.email} is not on the team list. Ask Russel to add it, then sign out and back in.`;
+    deny(`${user.email} is not on the team list. Ask Russel to add it, then sign out and back in.`);
   }
 });
 
@@ -667,7 +683,7 @@ document.addEventListener("click", e => { if(!e.target.closest("#more")) closeMo
 document.addEventListener("keydown", e => { if(e.key==="Escape") closeMore(); });
 window.addEventListener("resize", closeMore);
 
-function teamNames(){ return Object.values(team).map(t=>t.name).filter(Boolean).sort(); }
+function teamNames(){ return Object.values(team).filter(t=>!t.tier||t.tier==="admin").map(t=>t.name).filter(Boolean).sort(); }
 function optionList(sel, current){ const names=teamNames(); if(current && !names.includes(current)) names.push(current); sel.innerHTML = `<option value="">Unassigned</option>` + names.map(n=>`<option ${n===current?"selected":""}>${esc(n)}</option>`).join(""); }
 // Ordering rule (Sept 29): everything sorts by date, undated last, no manual ordering. A task sorts
 // by its due date. A project sorts by its "effective date": the earlier of its own deadline and the
@@ -901,18 +917,34 @@ function renderImport(m){
   };
 }
 
+// Team list = the one sign-in list for every page. Each entry carries a clearance tier (admin, crew, walker).
+// Only admins can open this page, so only admins can change the list; the database rules enforce the same.
+const CREWS = ["Crew 1","Crew 2"];
 function renderTeam(m){
-  const rows=Object.entries(team).map(([k,t])=>`<tr><td>${esc(t.name)}</td><td>${esc(t.email)}</td><td>${t.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()?'<span class="meta">admin</span>':`<button class="small danger" data-rm="${k}">Remove</button>`}</td></tr>`).join("");
-  m.innerHTML = `<div class="card"><h2>Team</h2><p class="meta">Only people listed here can open this page. Anyone on the list can add or remove teammates; the admin cannot be removed. Names are what show up as owners and assignees.</p>
-    <table><thead><tr><th>Name</th><th>Google email</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="grid2" style="margin-top:12px"><div><label>Name</label><input id="tmName" placeholder="First name"></div><div><label>Google email</label><input id="tmEmail" type="email" placeholder="name@gmail.com"></div></div>
-    <div class="actions"><button class="primary" id="tmAdd">Add teammate</button></div></div>`;
+  const order={admin:0,crew:1,walker:2};
+  const list=Object.entries(team).sort((a,b)=>(order[a[1].tier]??3)-(order[b[1].tier]??3) || (a[1].name||"").localeCompare(b[1].name||""));
+  const isR = t => (t.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+  const rows=list.map(([k,t])=>`<tr><td>${esc(t.name)}</td><td>${esc(t.email)}</td>
+    <td>${isR(t)?'<span class="meta">Admin (owner)</span>':`<select data-tier="${k}" style="width:auto">${!t.tier?'<option value="" selected>No access level</option>':""}${Object.entries(TIERS).map(([v,l])=>`<option value="${v}" ${t.tier===v?"selected":""}>${esc(l)}</option>`).join("")}</select>`}
+      ${t.tier==="crew"?` <select data-crew="${k}" style="width:auto"><option value="">No crew</option>${CREWS.map(c=>`<option ${t.crew===c?"selected":""}>${c}</option>`).join("")}</select>`:""}</td>
+    <td>${isR(t)?"":`<button class="small danger" data-rm="${k}">Remove</button>`}</td></tr>`).join("");
+  m.innerHTML = `<div class="card"><h2>Team and access</h2><p class="meta">One sign-in list for every page. The access level decides where a person lands: <b>Admin</b> opens Projects and the CRM, including client prices. <b>Crew</b> sees only the Employee View (his jobs, schedule, hours). <b>Walker</b> sees only the door hanger Routes page. Only admins can change this list. Names of admins are what show up as owners and assignees.</p>
+    <table><thead><tr><th>Name</th><th>Google email</th><th>Access</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="grid2" style="margin-top:12px"><div><label>Name</label><input id="tmName" placeholder="First name"></div><div><label>Google email</label><input id="tmEmail" type="email" placeholder="name@gmail.com"></div>
+      <div><label>Access level</label><select id="tmTier"><option value="">Pick one</option>${Object.entries(TIERS).map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join("")}</select></div>
+      <div id="tmCrewBox" hidden><label>Crew</label><select id="tmCrew">${CREWS.map(c=>`<option>${c}</option>`).join("")}</select></div></div>
+    <div class="actions"><button class="primary" id="tmAdd">Add person</button></div></div>`;
+  $("#tmTier").onchange = () => { $("#tmCrewBox").hidden = $("#tmTier").value!=="crew"; };
   $("#tmAdd").onclick = async () => {
-    const name=$("#tmName").value.trim(), email=$("#tmEmail").value.trim().toLowerCase();
+    const name=$("#tmName").value.trim(), email=$("#tmEmail").value.trim().toLowerCase(), tier=$("#tmTier").value;
     if(!name||!/@/.test(email)) return toast("Name and a valid email are required");
-    await commit("Added "+name+" to team", { ["allowed/"+emailKey(email)]: {name,email} });
+    if(!tier) return toast("Pick an access level");
+    const v={name,email,tier}; if(tier==="crew") v.crew=$("#tmCrew").value;
+    await commit("Added "+name+" as "+tier, { ["allowed/"+emailKey(email)]: v });
   };
-  m.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>commit("Removed "+team[b.dataset.rm].name+" from team", { ["allowed/"+b.dataset.rm]: null }));
+  m.querySelectorAll("[data-tier]").forEach(sel=>sel.onchange=()=>{ const k=sel.dataset.tier; if(!sel.value) return; commit(`${team[k].name}: access set to ${sel.value}`, { ["allowed/"+k+"/tier"]: sel.value }); });
+  m.querySelectorAll("[data-crew]").forEach(sel=>sel.onchange=()=>{ const k=sel.dataset.crew; commit(`${team[k].name}: ${sel.value||"no crew"}`, { ["allowed/"+k+"/crew"]: sel.value||null }); });
+  m.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>commit("Removed "+team[b.dataset.rm].name+" from the list", { ["allowed/"+b.dataset.rm]: null }));
 }
 
 let archiveQuery="";
