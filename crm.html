@@ -202,6 +202,19 @@
   .signpanel h4{margin:0 0 6px;font-size:15px}
   canvas.pad{display:block;width:100%;height:190px;background:#fff;border:2px dashed #7a889c;border-radius:8px;touch-action:none;cursor:crosshair}
   .sigimg{max-width:300px;width:100%;background:#fff;border:1px solid var(--line);border-radius:6px;display:block}
+  .paysheet-bg{position:absolute;inset:0;background:rgba(10,16,28,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10;transition:opacity .2s}
+  dialog.sign{position:fixed}
+  .paysheet{position:relative;background:var(--card);color:var(--ink);width:min(640px,100%);max-height:88dvh;overflow:auto;border-radius:16px 16px 0 0;box-shadow:var(--shadow);padding:10px 18px 28px;touch-action:pan-y}
+  .paysheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:2px auto 10px;cursor:grab}
+  .paysheet .psx{position:absolute;top:8px;right:10px;width:40px;height:40px;border-radius:50%;font-size:26px;line-height:1;padding:0;background:var(--surface2);border:0}
+  .paysheet h3{margin:2px 0 2px;font-size:20px} .paysheet h4{margin:16px 0 6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .pssvc{color:var(--ink2);font-size:14px}
+  .pstotal{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin-top:10px;font-size:15px} .pstotal b{font-size:24px}
+  .payopt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+  .payopt.nofee{border-color:var(--green);background:var(--green-soft)}
+  .payopt .ph{display:flex;justify-content:space-between;gap:10px;font-size:16px} .payopt .amt{font-weight:700}
+  .payopt .pb{font-size:14px;color:var(--ink2);margin-top:3px} .payopt .pf{font-size:12px;color:var(--amber);margin-top:4px} .payopt .pf.ok{color:var(--green)}
+  .psadmin{margin-top:18px;padding-top:12px;border-top:1px dashed var(--line)}
   #printArea{display:none}
   @media print{
     body>*:not(#printArea){display:none!important}
@@ -366,7 +379,7 @@ const SOURCES = ["Angi","Door hanger","Referral","Website","Google","Yard sign",
 const STATUSES = { new:"New lead", contacted:"Contacted", quoted:"Quoted", active:"Active client", paused:"Paused", former:"Former client", lost:"Lost" };
 const LEAD_STAGES = ["new","contacted","quoted"];
 const GOPAY = "Card (QuickBooks GoPayment)";
-const PAY_METHODS = ["",GOPAY,"Check","Cash","Zelle","Other"];
+const PAY_METHODS = ["","Zelle","Check","Cash","Venmo","PayPal",GOPAY,"Other"];
 const PAY_STATUSES = { "":"", paid:"Paid", open:"Open", pastdue:"Past due" };
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat"];
 // Each service type: label, and the fields its entry carries. A new type is one more block here
@@ -522,7 +535,7 @@ const MONTHS=["January","February","March","April","May","June","July","August",
 function fmtLong(d){ if(!d) return ""; const [y,m,dd]=d.split("-"); return `${MONTHS[+m-1]} ${+dd}, ${y}`; }
 function fmtStamp(ms){ if(!ms) return ""; const d=new Date(ms); return d.toLocaleDateString("en-US",{timeZone:TZ,month:"numeric",day:"numeric",year:"2-digit"})+" "+d.toLocaleTimeString("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit"}); }
 function ago(ms){ if(!ms) return "never"; const d=Math.floor((Date.now()-ms)/864e5); if(d<=0) return "today"; if(d===1) return "yesterday"; if(d<30) return d+"d ago"; const m=Math.floor(d/30); return m<12 ? m+"mo ago" : Math.floor(m/12)+"y ago"; }
-function money(v){ if(v===""||v==null||isNaN(+v)) return ""; return "$"+(+v).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function money(v){ if(v===""||v==null||isNaN(+v)) return ""; const cents=Math.round(+v*100)%100!==0; return "$"+(+v).toLocaleString("en-US",{minimumFractionDigits:cents?2:0,maximumFractionDigits:2}); }
 const tel = p => p ? `<a href="tel:${esc(p.replace(/[^\d+]/g,""))}" style="color:inherit">${esc(p)}</a>` : "";
 // Phone key: the number in E.164 form (+1 and ten digits). Used for duplicate checks and Quo matching.
 function phoneKey(p){ const d=String(p||"").replace(/\D/g,""); if(d.length===10) return "+1"+d; if(d.length===11 && d[0]==="1") return "+"+d; return d.length>=10 ? "+"+d : ""; }
@@ -702,6 +715,7 @@ const byName = (a,b) => (a[1].name||"").localeCompare(b[1].name||"");
 function contractNeeds(c){
   const out=[]; const mir=c.contracts||{};
   for(const s of svcList(c)) for(const [tid,t] of Object.entries(templates)){
+    if(tid.startsWith("_")) continue;
     if(t.active===false || !(t.services||{})[s.type]) continue;
     const signed = Object.entries(mir).filter(([,m])=>m.tpl===tid && m.sid===s.sid && m.status==="signed" && !m.voided).sort((a,b)=>b[1].signedAt-a[1].signedAt)[0] || null;
     out.push({tid, t, sid:s.sid, s, signed});
@@ -1094,12 +1108,6 @@ async function openSigning(clientId, tid, sid){
   $("#signBody").innerHTML = `
     <div class="doc" id="docLive">${t.sample?`<div class="samplebar">SAMPLE CONTRACT. For testing only. Do not use with a real client.</div>`:""}${renderDocHtml(text,"sign")}</div>
     <div class="signpanel">
-      <h4>Payment today</h4>
-      <div class="grid2"><div><label>Payment method</label><select id="sgPayM">${opts(PAY_METHODS, c.payMethod||GOPAY, {"":"Not set"})}</select></div>
-        <div><label>Status</label><select id="sgPayS"><option value="paid">Paid today</option><option value="open">Not paid yet (invoice)</option></select></div></div>
-      <p class="meta" id="sgPayNote" style="margin:6px 0 0"></p>
-    </div>
-    <div class="signpanel">
       <h4>Client signature</h4>
       <p class="meta" style="margin:0 0 8px">Sign with a finger or Apple Pencil inside the box.</p>
       <canvas class="pad" id="padClient"></canvas>
@@ -1119,11 +1127,6 @@ async function openSigning(clientId, tid, sid){
   $("#signBody").scrollTop=0;
   signCtx.pad = makePad($("#padClient"));
   $("#padClientClear").onclick = () => signCtx.pad.clear();
-  const payNote = () => { const m=$("#sgPayM").value, st=$("#sgPayS").value;
-    $("#sgPayNote").textContent = st==="paid" && m===GOPAY ? "Charge the card in GoPayment now. Claude will match that sale in QuickBooks and will not send an invoice."
-      : st==="paid" ? "Recorded as paid. Claude will record the payment in QuickBooks."
-      : "Claude will create the invoice in QuickBooks."; };
-  $("#sgPayM").onchange = payNote; $("#sgPayS").onchange = payNote; payNote();
   renderCompanySig();
   $("#sgLock").onclick = lockContract;
 }
@@ -1150,32 +1153,22 @@ async function lockContract(){
   let companySig = S.mySig?.data || null, saveSig=false;
   if(!companySig){ if(!S.cpad || S.cpad.isEmpty()){ $("#padCompany").scrollIntoView({block:"center"}); return toast("Draw your company signature once."); } companySig=S.cpad.data(); saveSig=true; }
   if(S.sample && !$("#sgSampleOk").checked) return toast("Tick the box confirming this is a test.");
-  const payMethod=$("#sgPayM").value, payStatus=$("#sgPayS").value;
   S.busy=true; $("#sgLock").disabled=true; $("#sgStatus").textContent="Saving…";
   const now=Date.now();
   const payload = { v:1, clientId:S.clientId, tpl:S.tid, tplName:t.name, tplVersion:t.version||1, sample:!!t.sample, sid:S.sid, serviceType:s.type,
     serviceSummary:SERVICE_TYPES[s.type].summary(s), amount: (s.price===""||s.price==null) ? null : +s.price,
     text:S.text, choices, initials, signerName, signedDate:today(), signedAt:now, signature:S.pad.data(),
-    companySig, companySigner: S.mySig?.name || me.displayName || me.email, witness:me.email, device:navigator.userAgent.slice(0,300), payMethod, payStatus };
+    companySig, companySigner: S.mySig?.name || me.displayName || me.email, witness:me.email, device:navigator.userAgent.slice(0,300) };
   const hash = await sha256(canon(payload));
   const cid = db.ref("contracts/"+S.clientId).push().key;
   const upd = {
     ["contracts/"+S.clientId+"/"+cid]: { ...payload, status:"signed", hash },
     ["clients/"+S.clientId+"/contracts/"+cid]: { tpl:S.tid, sid:S.sid, name:t.name, sample:!!t.sample, status:"signed", signedAt:now },
-    ["clients/"+S.clientId+"/payMethod"]: payMethod, ["clients/"+S.clientId+"/payStatus"]: payStatus,
     ["clients/"+S.clientId+"/lastContactAt"]: now, ["clients/"+S.clientId+"/updatedAt"]: now, ["clients/"+S.clientId+"/updatedBy"]: me.email,
-    ["clientLog/"+S.clientId+"/"+db.ref("clientLog").push().key]: { text:`Signed ${t.name}${t.sample?" (SAMPLE, test only)":""}. ${payStatus==="paid"?"Paid by "+(payMethod||"unrecorded method"):"Not paid at signing"}.`, at:now, by:me.email, source:"contract" }
+    ["clientLog/"+S.clientId+"/"+db.ref("clientLog").push().key]: { text:`Signed ${t.name}${t.sample?" (SAMPLE, test only)":""}.`, at:now, by:me.email, source:"contract" }
   };
   if(saveSig) upd["adminSigs/"+mySigKey()] = { data:companySig, name:me.displayName||me.email, savedAt:now };
-  if(!t.sample){
-    Object.assign(upd, qbCustomerRow(S.clientId));
-    const rid=db.ref("sync/qb").push().key;
-    upd["sync/qb/"+rid] = payStatus==="paid" && payMethod===GOPAY
-      ? { type:"match-payment", clientId:S.clientId, contractId:cid, amount:payload.amount, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email }
-      : payStatus==="paid"
-      ? { type:"record-payment", clientId:S.clientId, contractId:cid, amount:payload.amount, method:payMethod, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email }
-      : { type:"invoice", clientId:S.clientId, contractId:cid, amount:payload.amount, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email };
-  }
+  if(!t.sample) Object.assign(upd, qbCustomerRow(S.clientId));
   try {
     await db.ref().update(upd); // not undoable on purpose: a signed contract is locked by the database rules
   } catch(e){
@@ -1186,6 +1179,88 @@ async function lockContract(){
   const rec={ ...payload, status:"signed", hash };
   await viewContract(S.clientId, cid, rec);
   driveStatus(S.clientId, cid, rec, true);
+  openPaySheet(S.clientId, cid, rec);
+}
+
+// ---------- Ways to pay: the sheet the client sees right after signing ----------
+// Shows the service and price, then the ways to pay: no-fee methods first (Zelle, check), then Venmo,
+// PayPal and card with the fee added. The bottom row is for the admin to record how they paid, which
+// also queues the QuickBooks work. Close with the X or by sliding the sheet down.
+// From the company Ways to Pay sheet (Oct 2026). Change these in More > Contracts > Ways to pay.
+// Everything here is paid in person at signing.
+const PAY_DEFAULTS = { zelle:"mangiapanebrothers or 734-450-2400", checkPayable:"Mangiapane Brothers", checkMail:"",
+  cashNote:"Hand it to us today.",
+  venmo:"@Mangiapane_Brothers", paypal:"@MangiapaneBrothers", venmoFee:3, paypalFee:4, cardFee:3,
+  cardNote:"Tap your card or phone on our phone today. Receipt by text or email." };
+// Card surcharges are capped at 3% by the card networks; Venmo and PayPal are a price difference, not a card surcharge.
+const feeFor = (method, P) => method==="Venmo" ? +P.venmoFee||0 : method==="PayPal" ? +P.paypalFee||0 : method===GOPAY ? Math.min(3,+P.cardFee||0) : 0;
+const payInfo = () => ({ ...PAY_DEFAULTS, ...(templates._payInfo||{}) });
+const r2 = n => Math.round(n*100)/100;
+const withFee = (amt, pct) => r2(amt*(1+pct/100));
+function openPaySheet(clientId, cid, rec){
+  const P=payInfo(), c=clients[clientId]||{}, amt=rec.amount;
+  const paid=(c.contracts?.[cid]||{}).payment;
+  const price = v => amt==null ? "the amount on your invoice" : money(v);
+  const opt = (k, title, body, total, feeNote) => `<div class="payopt${feeNote?"":" nofee"}"><div class="ph"><b>${title}</b><span class="amt">${total}</span></div><div class="pb">${body}</div>${feeNote?`<div class="pf">${feeNote}</div>`:`<div class="pf ok">No added fee</div>`}</div>`;
+  const feeOpt = (k, title, body, method, what) => { const f=feeFor(method,P); return opt(k, title, body, amt==null?price(amt):money(withFee(amt,f)), f ? `Includes the ${f}% ${what} fee` : ""); };
+  const rows = [
+    P.zelle ? opt("zelle","Zelle",`Send it now to <b>${esc(P.zelle)}</b>.`, price(amt)) : "",
+    opt("check","Check",`Make it payable to <b>${esc(P.checkPayable||COMPANY)}</b> and hand it to us today.`, price(amt)),
+    P.cashNote ? opt("cash","Cash",esc(P.cashNote), price(amt)) : "",
+    P.venmo ? feeOpt("venmo","Venmo",`Send it now to <b>${esc(P.venmo)}</b>.`, "Venmo", "Venmo") : "",
+    P.paypal ? feeOpt("paypal","PayPal",`Send it now to <b>${esc(P.paypal)}</b>.`, "PayPal", "PayPal") : "",
+    feeOpt("card","Credit card",esc(P.cardNote||"Tap to pay with us today."), GOPAY, "card processing")
+  ].join("");
+  const marks = [["Zelle","Zelle"],["Check","Check"],["Cash","Cash"],["Venmo","Venmo"],["PayPal","PayPal"],[GOPAY,"Card"],["later","Paying later"]];
+  const host = document.createElement("div"); host.className="paysheet-bg"; host.id="paySheet";
+  host.innerHTML = `<div class="paysheet" role="dialog" aria-label="Ways to pay">
+    <div class="grab" aria-hidden="true"></div>
+    <button type="button" class="psx" id="psClose" aria-label="Close">&times;</button>
+    <div class="psin">
+      <div class="meta">Thank you, ${esc(rec.signerName||c.name||"")}</div>
+      <h3>${esc(rec.tplName)}</h3>
+      <div class="pssvc">${esc(rec.serviceSummary||"")}</div>
+      <div class="pstotal"><span>Total</span><b>${amt==null?"See invoice":money(amt)}</b></div>
+      <h4>Ways to pay</h4>
+      ${rows}
+      <div class="psadmin"><div class="meta"><b>For ${esc(COMPANY.replace(" LLC",""))}:</b> how did they pay?${paid?` Recorded: ${esc(paid.method==="later"?"paying later":paid.method)}.`:""}</div>
+        <div class="row" style="margin-top:6px">${marks.map(([v,l])=>`<button type="button" class="small${paid&&paid.method===v?" primary":""}" data-paid="${esc(v)}">${l}</button>`).join("")}</div></div>
+      ${rec.sample?`<p class="meta" style="margin-top:10px">Sample contract: nothing is sent to QuickBooks.</p>`:""}
+    </div></div>`;
+  $("#signDlg").appendChild(host);
+  const sheet=host.querySelector(".paysheet");
+  const close=()=>{ sheet.style.transition="transform .2s"; sheet.style.transform="translateY(100%)"; host.style.opacity="0"; setTimeout(()=>host.remove(),200); };
+  host.querySelector("#psClose").onclick=close;
+  host.onclick=e=>{ if(e.target===host) close(); };
+  // Slide down to close: drag from the handle or the top of the sheet.
+  let y0=null, dy=0;
+  sheet.addEventListener("pointerdown", e=>{ if(e.target.closest("button,a,input")) return; if(sheet.scrollTop>0 && !e.target.closest(".grab")) return; y0=e.clientY; dy=0; sheet.style.transition="none"; try{ sheet.setPointerCapture(e.pointerId); }catch(x){} });
+  sheet.addEventListener("pointermove", e=>{ if(y0==null) return; dy=Math.max(0,e.clientY-y0); sheet.style.transform=`translateY(${dy}px)`; });
+  const up=()=>{ if(y0==null) return; y0=null; if(dy>110) close(); else { sheet.style.transition="transform .2s"; sheet.style.transform=""; } };
+  sheet.addEventListener("pointerup", up); sheet.addEventListener("pointercancel", up);
+  host.querySelectorAll("[data-paid]").forEach(b=>b.onclick=async()=>{ await recordPayment(clientId, cid, rec, b.dataset.paid); close(); });
+}
+function payLine(clientId, cid, rec){
+  const p=(clients[clientId]?.contracts?.[cid]||{}).payment;
+  return p ? (p.method==="later"?"Paying later: invoice queued.":`Paid ${p.total!=null?money(p.total)+" ":""}by ${esc(p.method)}.`) : (rec.payStatus==="paid"?`Payment recorded: ${esc(rec.payMethod||"")}.`:"Payment not recorded yet.");
+}
+// Records how the client paid (or that they will pay later) and queues the matching QuickBooks work.
+async function recordPayment(clientId, cid, rec, method){
+  const P=payInfo(), fee=feeFor(method,P), now=Date.now(), later=method==="later";
+  const amt=rec.amount, hasFee=fee>0;
+  const total = amt==null ? null : (hasFee ? withFee(amt,fee) : amt);
+  const upd = {
+    [`clients/${clientId}/contracts/${cid}/payment`]: { method, status: later?"open":"paid", amount:amt, fee: hasFee&&amt!=null ? r2(total-amt) : 0, total, at:now, by:me.email },
+    [`clients/${clientId}/payStatus`]: later ? "open" : "paid",
+    [`clients/${clientId}/payMethod`]: later ? (clients[clientId]?.payMethod||"") : method,
+    [`clientLog/${clientId}/${db.ref("clientLog").push().key}`]: { text: later ? `${rec.tplName}: paying later, invoice to follow.` : `${rec.tplName}: paid ${total==null?"":money(total)+" "}by ${method}${hasFee&&amt!=null?` (includes ${money(total-amt)} fee)`:""}.`, at:now, by:me.email, source:"payment" }
+  };
+  if(!rec.sample){
+    const base = { clientId, contractId:cid, amount:total, serviceAmount:amt, fee: hasFee&&amt!=null ? r2(total-amt) : 0, date:today(), description:`${rec.tplName}: ${rec.serviceSummary||""}`, status:"pending", createdAt:now, createdBy:me.email };
+    upd["sync/qb/"+db.ref("sync/qb").push().key] = later ? { ...base, type:"invoice" } : method===GOPAY ? { ...base, type:"match-payment" } : { ...base, type:"record-payment", method };
+  }
+  try{ await db.ref().update(upd); if($("#cvPayLine")) $("#cvPayLine").innerHTML=payLine(clientId,cid,rec); toast(later ? "Recorded: paying later. The invoice is queued for QuickBooks." : `Recorded: paid by ${method==="later"?"":method}.`); }
+  catch(e){ toast("Not recorded: "+(e.code||e.message)); }
 }
 // Status line on the contract screen: saves to Drive when asked, or shows where the copy is.
 async function driveStatus(clientId, cid, rec, start){
@@ -1221,12 +1296,13 @@ async function viewContract(clientId, cid, recIn){
       <div class="row"><button type="button" class="primary" id="cvPrint">Print or save PDF</button>${mail?`<a href="${mail}" class="small" style="text-decoration:none"><button type="button">Email the client</button></a>`:`<span class="meta">No email on file for this client.</span>`}
       <span style="margin-left:auto"></span>${rec.voided?"":`<button type="button" class="danger" id="cvVoid">Void</button>`}</div>
       <p class="meta" id="cvDrive" style="margin:8px 0 0"></p>
-      <p class="meta" style="margin:8px 0 0">To give the client a copy: Print or save PDF, then Save to Files, then attach that PDF to the email. ${rec.payStatus==="paid"?`Payment recorded: ${esc(rec.payMethod||"")}.`:"Not paid at signing."}</p>
+      <p class="meta" style="margin:8px 0 0">To give the client a copy: Print or save PDF, then Save to Files, then attach that PDF to the email. <span id="cvPayLine">${payLine(clientId,cid,rec)}</span> <button type="button" class="small" id="cvPay">Ways to pay</button></p>
       <div id="cvVoidBox" hidden style="margin-top:10px"><label>Reason for voiding (kept with the record)</label><input id="cvVoidReason" placeholder="Wrong price, client changed package..."><div class="actions"><button type="button" id="cvVoidCancel">Keep it</button><button type="button" class="danger" id="cvVoidGo">Void this contract</button></div></div>
     </div>`;
   if(!$("#signDlg").open) $("#signDlg").showModal();
   $("#signBody").scrollTop=0;
   driveStatus(clientId, cid, rec, false);
+  $("#cvPay").onclick = () => openPaySheet(clientId, cid, rec);
   $("#cvPrint").onclick = () => { $("#printArea").innerHTML = `<div class="doc">${contractDocHtml(rec)}</div>`; window.print(); };
   if($("#cvVoid")){
     $("#cvVoid").onclick = () => { $("#cvVoidBox").hidden=false; $("#cvVoidReason").focus(); };
@@ -1358,7 +1434,7 @@ function driveNag(){
 // ---------- Contracts view: templates and your countersignature ----------
 let tplEditing=null;
 function renderContractsView(m){
-  const list=Object.entries(templates).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
+  const list=Object.entries(templates).filter(([id])=>!id.startsWith("_")).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
   const signedCount = live().reduce((n,[,c])=>n+Object.values(c.contracts||{}).filter(x=>x.status==="signed"&&!x.voided&&!x.sample).length,0);
   m.innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Contract templates</h2><button class="primary" id="tplNew">+ New template</button></div>
     <p class="meta">A template is assigned automatically to every client who has one of its services. The client's name, address, price, and dates fill in when the contract opens. ${signedCount} real contracts signed so far.</p>
@@ -1370,8 +1446,23 @@ function renderContractsView(m){
     </tbody></table></div>
     <div class="card"><h2>Google Drive copies</h2>${(()=>{ const n=driveMissing().length; return `<p class="meta">Every signed contract is also saved as a PDF and an exact record in your Google Drive folder "${esc(DRIVE_ROOT_NAME)}", one folder per client.</p>` +
       (n ? `<div class="warnline">${n} signed contract${n===1?" is":"s are"} not in Google Drive yet. <button class="small primary" id="driveAll">Save to Drive</button></div>` : `<p class="meta">All signed contracts are in Google Drive.</p>`); })()}</div>
+    <div class="card"><h2>Ways to pay</h2><p class="meta">Shown to the client right after signing. Everything is paid in person, at the door. Zelle, check and cash come first with no fee; Venmo, PayPal and card show the price with their fee added. Leave a line empty to hide that option (check and card always show).</p>
+      <div class="grid2">
+        <div><label>Zelle (email or phone)</label><input id="piZelle" value="${esc(payInfo().zelle)}" placeholder="payments@..."></div>
+        <div><label>Checks payable to</label><input id="piPayable" value="${esc(payInfo().checkPayable)}"></div>
+        <div><label>Venmo</label><input id="piVenmo" value="${esc(payInfo().venmo)}" placeholder="@Mangiapane-Brothers"></div>
+        <div><label>PayPal</label><input id="piPaypal" value="${esc(payInfo().paypal)}" placeholder="paypal.me/... or email"></div>
+        <div><label>Venmo fee (%)</label><input id="piVenmoFee" type="number" min="0" max="10" step="0.1" value="${esc(payInfo().venmoFee)}"></div>
+        <div><label>PayPal fee (%)</label><input id="piPaypalFee" type="number" min="0" max="10" step="0.1" value="${esc(payInfo().paypalFee)}"></div>
+        <div><label>Card fee (%, 3 at most)</label><input id="piCardFee" type="number" min="0" max="3" step="0.1" value="${esc(payInfo().cardFee)}"></div>
+        <div><label>Card line</label><input id="piCard" value="${esc(payInfo().cardNote)}"></div>
+        <div style="grid-column:1/-1"><label>Cash instructions (leave empty to hide cash)</label><input id="piCash" value="${esc(payInfo().cashNote)}"></div>
+      </div>
+      <div class="actions"><button class="primary" id="piSave">Save ways to pay</button></div></div>
     <div class="card"><h2>Your countersignature</h2><p class="meta">Drawn once and applied to every contract you lock. Each admin keeps his own.</p><div id="mySigBox" class="meta">Loading…</div></div>`;
   $("#tplNew").onclick = () => openTemplate(null);
+  $("#piSave").onclick = () => { const pct=(id,max)=>Math.min(max,Math.max(0,+$(id).value||0));
+    commit("Saved ways to pay", { "contractTemplates/_payInfo": { zelle:$("#piZelle").value.trim(), checkPayable:$("#piPayable").value.trim()||COMPANY, cashNote:$("#piCash").value.trim(), venmo:$("#piVenmo").value.trim(), paypal:$("#piPaypal").value.trim(), venmoFee:pct("#piVenmoFee",10), paypalFee:pct("#piPaypalFee",10), cardFee:pct("#piCardFee",3), cardNote:$("#piCard").value.trim(), updatedAt:Date.now(), updatedBy:me.email } }); };
   if($("#driveAll")) $("#driveAll").onclick = e => saveMissingToDrive(e.currentTarget);
   m.querySelectorAll("[data-tpl]").forEach(b=>b.onclick=()=>openTemplate(b.dataset.tpl));
   loadMySig().then(sig=>{
@@ -1493,8 +1584,8 @@ function qbExport(){
     instructions:[
       "Work through rows in order with the QuickBooks connector.",
       "customer: search QuickBooks by phone, then by name. If found, return its id. Create a customer only if none matches. GoPayment may already have created one.",
-      "match-payment: the card was charged in QuickBooks GoPayment at signing. Do NOT create an invoice. Find that day's GoPayment sale for the amount, confirm it sits on the right customer, return its number.",
-      "record-payment: paid at signing by check, cash, or Zelle. Record it against the customer and return the reference.",
+      "match-payment: the card was charged in QuickBooks GoPayment at signing. Do NOT create an invoice. Find that day's GoPayment sale for the amount (service price plus the fee shown), confirm it sits on the right customer, return its number.",
+      "record-payment: paid at signing by Zelle, check, cash, Venmo or PayPal. Record it against the customer. When fee is above zero, record it as a separate card and app fee line. Return the reference.",
       "invoice: create an invoice for the amount and description, due on receipt, mailed with the ways-to-pay section. Return the invoice number.",
       "Return JSON in resultFormat so it can be pasted into the CRM. Mark a row error with a note rather than guessing."
     ],
