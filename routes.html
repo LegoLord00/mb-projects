@@ -80,13 +80,30 @@
   img.photo{max-width:100%;border-radius:var(--r)}
   .demo{background:var(--amber-soft);color:var(--amber);padding:6px 12px;font-size:13px;text-align:center}
   @media (max-width:520px){.grid2{grid-template-columns:1fr}}
+
+  /* page menu: three-line button left of the company name, drawer from the left edge */
+  .navbtn{flex:none;width:40px;height:40px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--header-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .navbtn:hover{background:rgba(255,255,255,.14)}
+  .navbtn svg{width:24px;height:24px;display:block}
+  .pgdrawer-bg{position:fixed;inset:0;background:rgba(10,16,28,.45);z-index:2000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .pgdrawer-bg.open{opacity:1;pointer-events:auto}
+  .pgdrawer{position:fixed;top:0;left:0;bottom:0;width:min(290px,84vw);background:var(--card);color:var(--ink);z-index:2001;box-shadow:var(--shadow);transform:translateX(-102%);transition:transform .22s;display:flex;flex-direction:column;padding:14px 12px;touch-action:pan-y}
+  .pgdrawer.open{transform:none}
+  .pgdrawer .pdhead{display:flex;align-items:center;gap:8px;padding:0 4px 12px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .pgdrawer .pdhead b{flex:1;font-size:15px}
+  .pgdrawer .pdx{width:36px;height:36px;border-radius:50%;border:0;background:var(--surface2);color:var(--ink);font-size:22px;line-height:1;padding:0;cursor:pointer}
+  .pgdrawer a{display:block;padding:11px 12px;border-radius:8px;color:var(--ink);text-decoration:none;margin:2px 0}
+  .pgdrawer a span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+  .pgdrawer a:hover{background:var(--surface2)}
+  .pgdrawer a.here{background:var(--accent-soft);color:var(--accent);font-weight:650}
+  .pgdrawer .pdfoot{margin-top:auto;font-size:12px;color:var(--muted);padding:8px 4px 0}
 </style>
 </head>
 <body>
 <div id="demoBanner" class="demo" hidden>Demo mode. Nothing here is saved.</div>
 <header>
+  <button type="button" class="navbtn" id="navBtn" hidden aria-label="Open page menu" aria-controls="pgDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <h1>Mangiapane Brothers Routes</h1>
-  <span class="xlinks" id="xlinks" hidden><a class="xlink" href="./index.html">Projects</a><a class="xlink" href="./crm.html">CRM</a><a class="xlink here" href="./routes.html">Routes</a></span>
   <span class="who" id="who"></span>
   <button class="ghost small" id="signout" hidden>Sign out</button>
   <nav id="nav" hidden></nav>
@@ -192,7 +209,7 @@ $("#signout").onclick = () => store.auth && store.auth.signOut();
 async function enter(user){
   me = { email:user.email.toLowerCase(), name:user.displayName||user.email, key:emailKey(user.email) };
   $("#who").textContent = me.email; $("#signout").hidden = !!DEMO;
-  const deny = m => { $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#xlinks").hidden=true; $("#gateMsg").textContent = m; };
+  const deny = m => { $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#navBtn").hidden=true; $("#gateMsg").textContent = m; };
   try {
     const mine = await store.get("allowed/"+me.key).catch(()=>null);
     const tier = mine?.tier || (me.email===ADMIN_EMAIL.toLowerCase() ? "admin" : "");
@@ -201,12 +218,12 @@ async function enter(user){
     if(tier!=="admin" && tier!=="walker" && !legacy) return deny(`${me.email} is not on the route list. Ask Russel to add it, then sign out and back in.`);
     isAdmin = tier==="admin";
     if(mine?.name) me.name = mine.name; else if(legacy?.name) me.name = legacy.name;
-    $("#gate").hidden=true; $("#app").hidden=false; $("#nav").hidden=false; $("#xlinks").hidden=!isAdmin; attach();
+    $("#gate").hidden=true; $("#app").hidden=false; $("#nav").hidden=false; $("#navBtn").hidden=!isAdmin; attach();
   } catch(e){
     deny(`${me.email} could not be checked against the route list. Ask Russel.`);
   }
 }
-function leave(){ me=null; isAdmin=false; unsub.forEach(f=>f()); unsub=[]; $("#who").textContent=""; $("#signout").hidden=true; $("#nav").hidden=true; $("#xlinks").hidden=true; $("#gate").hidden=false; $("#app").hidden=true; }
+function leave(){ me=null; isAdmin=false; unsub.forEach(f=>f()); unsub=[]; $("#who").textContent=""; $("#signout").hidden=true; $("#nav").hidden=true; $("#navBtn").hidden=true; $("#gate").hidden=false; $("#app").hidden=true; }
 function mergeWalkers(){ walkers = {...legacyWalkers}; Object.entries(allowedWalkers).forEach(([k,v])=>{ if(v && v.tier==="walker") walkers[k]={name:v.name, email:v.email}; }); }
 function attach(){
   unsub.forEach(f=>f()); unsub=[];
@@ -506,6 +523,23 @@ if(DEMO){
 } else {
   store.auth.onAuthStateChanged(u => u ? enter(u) : leave());
 }
+</script>
+<div class="pgdrawer-bg" id="pgDrawerBg"></div>
+<nav class="pgdrawer" id="pgDrawer" aria-label="Pages" aria-hidden="true">
+  <div class="pdhead"><b>Mangiapane Brothers</b><button type="button" class="pdx" id="pgDrawerX" aria-label="Close page menu">&times;</button></div>
+  <a href="./index.html">Projects<span>Admin task dashboard</span></a><a href="./crm.html">CRM<span>Leads, clients, contracts</span></a><a href="./routes.html" class="here" aria-current="page">Routes<span>Door hanger routes</span></a>
+  <div class="pdfoot">Full-Service Property Maintenance for Those Who Take Pride in Their Home</div>
+</nav>
+<script>
+// Page menu: opens from the three-line button, closes with the X, a tap outside, Escape, or a swipe left.
+(function(){
+  const btn=document.getElementById("navBtn"), d=document.getElementById("pgDrawer"), bg=document.getElementById("pgDrawerBg"), x=document.getElementById("pgDrawerX");
+  const set=open=>{ d.classList.toggle("open",open); bg.classList.toggle("open",open); d.setAttribute("aria-hidden",String(!open)); btn.setAttribute("aria-expanded",String(open)); if(open) x.focus(); };
+  btn.onclick=()=>set(!d.classList.contains("open")); x.onclick=()=>set(false); bg.onclick=()=>set(false);
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && d.classList.contains("open")) set(false); });
+  let x0=null; d.addEventListener("pointerdown",e=>{ x0=e.clientX; }); d.addEventListener("pointerup",e=>{ if(x0!=null && x0-e.clientX>60) set(false); x0=null; });
+  window.__pageMenu={open:()=>set(true),close:()=>set(false)};
+})();
 </script>
 </body>
 </html>
