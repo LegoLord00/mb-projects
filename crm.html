@@ -1,0 +1,1469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mangiapane Brothers CRM</title>
+<style>
+  :root{color-scheme:light dark;
+    --bg:#f3f5f8;--card:#ffffff;--surface2:#e9edf2;--line:#d3dae3;
+    --ink:#16233a;--ink2:#4a5a72;--muted:#7a889c;
+    --accent:#1f4e8c;--accent-ink:#ffffff;--accent-soft:#e2ebf7;
+    --green:#1c7a4c;--green-soft:#e1f0e8;--amber:#b0741b;--amber-soft:#fbf1dc;--red:#a63b3b;--red-soft:#f6e3e3;
+    --header:#1f4e8c;--header-ink:#ffffff;--shadow:0 8px 28px rgba(22,35,58,.12);--r:6px;
+    --s-lawn:#1c7a4c;--s-lawn-soft:#e1f0e8;
+    --s-fall:#b0741b;--s-fall-soft:#fbf1dc;
+    --s-snow:#1f4e8c;--s-snow-soft:#e2ebf7;
+    --s-landscaping:#6b3fa0;--s-landscaping-soft:#ede6f7;
+    --s-lights:#a63b3b;--s-lights-soft:#f6e3e3}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0f1521;--card:#171f2e;--surface2:#1f2a3b;--line:#2c394d;
+    --ink:#e8edf4;--ink2:#b3bfd0;--muted:#7f8ca0;
+    --accent:#6da3e6;--accent-ink:#0f1521;--accent-soft:#1d2d47;
+    --green:#4fbf85;--green-soft:#163326;--amber:#e0a94a;--amber-soft:#3a2d14;--red:#e07a7a;--red-soft:#3a1d1d;
+    --header:#171f2e;--header-ink:#e8edf4;--shadow:0 8px 28px rgba(0,0,0,.45);
+    --s-lawn:#4fbf85;--s-lawn-soft:#163326;
+    --s-fall:#e0a94a;--s-fall-soft:#3a2d14;
+    --s-snow:#6da3e6;--s-snow-soft:#1d2d47;
+    --s-landscaping:#b494e0;--s-landscaping-soft:#2b1f40;
+    --s-lights:#e07a7a;--s-lights-soft:#3a1d1d}}
+  :root[data-theme="dark"]{
+    --bg:#0f1521;--card:#171f2e;--surface2:#1f2a3b;--line:#2c394d;
+    --ink:#e8edf4;--ink2:#b3bfd0;--muted:#7f8ca0;
+    --accent:#6da3e6;--accent-ink:#0f1521;--accent-soft:#1d2d47;
+    --green:#4fbf85;--green-soft:#163326;--amber:#e0a94a;--amber-soft:#3a2d14;--red:#e07a7a;--red-soft:#3a1d1d;
+    --header:#171f2e;--header-ink:#e8edf4;--shadow:0 8px 28px rgba(0,0,0,.45);
+    --s-lawn:#4fbf85;--s-lawn-soft:#163326;
+    --s-fall:#e0a94a;--s-fall-soft:#3a2d14;
+    --s-snow:#6da3e6;--s-snow-soft:#1d2d47;
+    --s-landscaping:#b494e0;--s-landscaping-soft:#2b1f40;
+    --s-lights:#e07a7a;--s-lights-soft:#3a1d1d}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--header);color:var(--header-ink);padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  header .right{display:flex;gap:8px 12px;align-items:center;margin-left:auto;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  header .tag{font-size:12px;opacity:.85}
+  header .who{font-size:13px;opacity:.9}
+  header a.xlink{color:var(--header-ink);opacity:.8;font-size:13px;text-decoration:none;white-space:nowrap}
+  header a.xlink:hover{opacity:1;text-decoration:underline}
+  header a.xlink.here{opacity:1;font-weight:650;text-decoration:underline}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:var(--r);font-weight:500}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  button.small{padding:4px 9px;font-size:13px}
+  button.big{padding:12px 20px;font-size:17px;font-weight:650}
+  button.ghost{background:transparent;border-color:var(--header-ink);color:var(--header-ink);opacity:.85}
+  button.danger{color:var(--red)}
+  button.link{background:transparent;border-color:transparent;color:var(--accent);padding:2px 4px}
+  header nav{display:flex;gap:2px;overflow-x:auto;flex:1 1 auto;min-width:0;scrollbar-width:none}
+  header nav::-webkit-scrollbar{display:none}
+  header nav button{white-space:nowrap;background:transparent;border-color:transparent;color:var(--header-ink);opacity:.8;padding:6px 10px;font-weight:500}
+  header nav button:hover{opacity:1}
+  header nav button.on{background:var(--header-ink);color:var(--header);opacity:1}
+  header nav button .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  @media(max-width:900px){header nav{order:3;flex-basis:100%;margin:0 -16px;padding:0 16px;width:calc(100% + 32px)}}
+  .more{position:relative;flex:none}
+  .more .caret{font-size:11px;opacity:.8;margin-left:2px}
+  .menu{position:fixed;display:none;flex-direction:column;min-width:170px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);z-index:40}
+  .more.open .menu{display:flex}
+  header nav .menu button{color:var(--ink);opacity:1;text-align:left;border-radius:4px;padding:8px 10px}
+  header nav .menu button:hover{background:var(--surface2)}
+  header nav .menu button.on{background:var(--accent-soft);color:var(--accent)}
+  main{padding:16px;max-width:1200px;margin:0 auto}
+  main.wide{max-width:none}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .card h2{font-size:16px;margin:0 0 4px}
+  .meta{color:var(--muted);font-size:13px}
+  .meta i{color:var(--muted)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:600;white-space:nowrap}
+  .pill.new,.pill.paused,.pill.former{background:var(--surface2);color:var(--ink2)}
+  .pill.contacted{background:var(--accent-soft);color:var(--accent)}
+  .pill.quoted{background:var(--amber-soft);color:var(--amber)}
+  .pill.active{background:var(--green-soft);color:var(--green)}
+  .pill.lost{background:var(--red-soft);color:var(--red)}
+  .pill.paid{background:var(--green-soft);color:var(--green)} .pill.open{background:var(--amber-soft);color:var(--amber)} .pill.pastdue{background:var(--red-soft);color:var(--red)}
+  .pill.unsigned{background:var(--red-soft);color:var(--red);font-size:11px;padding:1px 7px}
+  .pill.sample{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber)}
+  .pill.signed{background:var(--green-soft);color:var(--green)}
+  .pill.voided{background:var(--surface2);color:var(--muted);text-decoration:line-through}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;font-weight:600;letter-spacing:.02em;white-space:nowrap;border:1px solid transparent}
+  .tag.lawn{background:var(--s-lawn-soft);color:var(--s-lawn)}
+  .tag.fall{background:var(--s-fall-soft);color:var(--s-fall)}
+  .tag.snow{background:var(--s-snow-soft);color:var(--s-snow)}
+  .tag.landscaping{background:var(--s-landscaping-soft);color:var(--s-landscaping)}
+  .tag.lights{background:var(--s-lights-soft);color:var(--s-lights)}
+  .tag.off{opacity:.55;text-decoration:line-through}
+  .svcbar{border-left:4px solid var(--line)}
+  .svcbar.lawn{border-left-color:var(--s-lawn)} .svcbar.fall{border-left-color:var(--s-fall)} .svcbar.snow{border-left-color:var(--s-snow)} .svcbar.landscaping{border-left-color:var(--s-landscaping)} .svcbar.lights{border-left-color:var(--s-lights)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap} th.sortable:hover{color:var(--ink)} th.sortable.on{color:var(--accent)}
+  tr.click{cursor:pointer} tr.click:hover td{background:var(--surface2)}
+  td.num,th.num{text-align:right;white-space:nowrap}
+  input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);width:100%}
+  input[type=checkbox]{width:18px;height:18px;margin:0;vertical-align:middle}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  textarea{min-height:70px;resize:vertical}
+  textarea.code{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:340px}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+  @media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+  dialog{border:1px solid var(--line);border-radius:10px;padding:0;width:min(620px,94vw);box-shadow:var(--shadow);background:var(--card);color:var(--ink)}
+  dialog.big{width:min(760px,94vw);max-height:94vh;flex-direction:column;overflow:hidden}
+  dialog.big[open]{display:flex}
+  dialog.big .body{flex:1;min-height:0;overflow:auto;padding-bottom:0}
+  dialog.big .actions{position:sticky;bottom:0;background:var(--card);padding:12px 0 18px;margin-top:12px;border-top:1px solid var(--line)}
+  dialog::backdrop{background:rgba(10,16,28,.45)}
+  dialog .body{padding:18px;max-height:calc(94vh - 2px);overflow:auto}
+  dialog h3{margin:0 0 6px}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .actions .left{margin-right:auto}
+  .empty{color:var(--muted);padding:24px;text-align:center}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);box-shadow:var(--shadow);padding:10px 16px;border-radius:var(--r);font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:92vw}
+  .toast.show{opacity:1}
+  #gate{max-width:440px;margin:60px auto;text-align:center}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .filters select,.filters input{width:auto}
+  .filters input[type=search]{min-width:200px;flex:1}
+  code{background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:13px}
+  pre{background:var(--surface2);padding:10px;border-radius:var(--r);overflow:auto;font-size:12px}
+  .sect{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
+  .sect:first-child{margin-top:0}
+  .sect .n{font-weight:500;letter-spacing:0;text-transform:none}
+  .warnline{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber);border-radius:var(--r);padding:6px 10px;font-size:13px;margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .warnline b{color:inherit}
+  /* leads board */
+  .quick{display:grid;grid-template-columns:1.4fr 1fr 1.6fr .9fr .9fr 1fr auto;gap:8px;align-items:end}
+  .quick label{margin:0 0 3px}
+  @media(max-width:1000px){.quick{grid-template-columns:1fr 1fr 1fr}} @media(max-width:600px){.quick{grid-template-columns:1fr}}
+  .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding-bottom:6px;align-items:stretch}
+  .col{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-height:300px;display:flex;flex-direction:column;gap:8px}
+  .col h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin:0 0 2px;display:flex;align-items:center}
+  .col h2 .n{margin-left:auto;font-weight:500;color:var(--muted)}
+  .col.drop{box-shadow:inset 0 0 0 2px var(--accent)}
+  .col.won{background:var(--green-soft)} .col.lost{background:var(--red-soft)}
+  .lead{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;cursor:grab;user-select:none}
+  .lead:active{cursor:grabbing} .lead.dragging{opacity:.4}
+  .lead .name{font-weight:600}
+  .lead .meta{margin-top:2px}
+  .lead .stale{color:var(--red);font-weight:600}
+  .lead select{margin-top:6px;padding:3px 6px;font-size:12px;width:100%}
+  @media(min-width:701px){.lead select{display:none}}
+  @media(max-width:700px){.board{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:1fr}.col{min-height:0}.lead{cursor:default}}
+  .srcstrip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .srcstrip .pill{background:var(--card);border:1px solid var(--line);color:var(--ink2)}
+  /* client dialog */
+  .svc{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:6px;background:var(--bg)}
+  .svc .hd{display:flex;align-items:center;gap:8px}
+  .svc .hd .sum{flex:1;font-size:13px;color:var(--ink2)}
+  .svc .fields{margin-top:4px}
+  .ctr{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:6px;background:var(--bg);flex-wrap:wrap}
+  .ctr .t{flex:1;min-width:180px}
+  .log{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;background:var(--bg)}
+  .log .e{padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+  .log .e:first-child{border-top:0}
+  .log .e .when{font-size:12px;color:var(--muted)}
+  .addnote{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px;align-items:start}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
+  .kv b{color:var(--muted);font-weight:500}
+  .tool{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+  .tool:first-of-type{border-top:0}
+  .tool h3{margin:0 0 2px;font-size:15px}
+  .tool p{margin:0;color:var(--ink2);font-size:13px}
+  @media(max-width:600px){.tool{grid-template-columns:1fr}}
+  .maprow{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;align-items:center;font-size:13px}
+  .maprow select{padding:4px 6px}
+  /* signing screen: full screen on the iPad */
+  dialog.sign{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border:0;border-radius:0;padding:0}
+  dialog.sign[open]{display:flex;flex-direction:column}
+  .signbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--header);color:var(--header-ink);flex:none}
+  .signbar h3{margin:0;flex:1;font-size:17px}
+  .signbody{flex:1;overflow:auto;padding:20px 16px 60px;-webkit-overflow-scrolling:touch}
+  .doc{max-width:760px;margin:0 auto;background:#fff;color:#16233a;border:1px solid #d3dae3;border-radius:8px;padding:28px 30px;font:16px/1.55 Georgia,"Times New Roman",serif}
+  .doc h2{font:700 22px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0 0 12px}
+  .doc h3{font:700 16px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:20px 0 6px}
+  .doc h4{font:700 15px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:16px 0 4px}
+  .doc p{margin:0 0 10px} .doc ul,.doc ol{margin:0 0 10px;padding-left:24px}
+  .doc .ck{display:flex;gap:10px;align-items:flex-start;color:#16233a;font-size:16px;margin:6px 0;cursor:pointer}
+  .doc .ck input{width:26px;height:26px;flex:none;margin-top:-1px;accent-color:#1f4e8c}
+  .doc input.ini{display:inline-block;width:76px;padding:4px 6px;border:0;border-bottom:2px solid #16233a;border-radius:0;background:#fffbe9;color:#16233a;font:600 18px/1.2 -apple-system,sans-serif;text-align:center;text-transform:uppercase}
+  .doc input.ini[readonly]{background:transparent}
+  .doc .samplebar{background:#fbf1dc;color:#7a4f0e;border:1px solid #b0741b;border-radius:6px;padding:8px 12px;font:600 14px/1.35 -apple-system,sans-serif;margin:0 0 14px}
+  .doc .voidbar{background:#f6e3e3;color:#a63b3b;border:1px solid #a63b3b;border-radius:6px;padding:8px 12px;font:600 14px/1.35 -apple-system,sans-serif;margin:0 0 14px}
+  .doc .sigs{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px;border-top:1px solid #d3dae3;padding-top:14px;font:14px/1.4 -apple-system,sans-serif}
+  .doc .sigs img{width:100%;max-width:300px;height:auto;border-bottom:1px solid #16233a;display:block;background:#fff}
+  .doc .fp{margin-top:14px;font:12px/1.4 ui-monospace,Menlo,monospace;color:#4a5a72;word-break:break-all}
+  @media(max-width:600px){.doc{padding:18px 16px}.doc .sigs{grid-template-columns:1fr}}
+  .signpanel{max-width:760px;margin:16px auto 0;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .signpanel h4{margin:0 0 6px;font-size:15px}
+  canvas.pad{display:block;width:100%;height:190px;background:#fff;border:2px dashed #7a889c;border-radius:8px;touch-action:none;cursor:crosshair}
+  .sigimg{max-width:300px;width:100%;background:#fff;border:1px solid var(--line);border-radius:6px;display:block}
+  #printArea{display:none}
+  @media print{
+    body>*:not(#printArea){display:none!important}
+    #printArea{display:block!important}
+    #printArea .doc{border:0;padding:0;max-width:none}
+    @page{margin:16mm}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Mangiapane Brothers CRM</h1><div class="tag">Reliable Service. Uncompromising Standards.</div></div>
+  <nav id="nav" hidden>
+    <button data-view="leads" class="on">Leads</button>
+    <button data-view="clients">Clients</button>
+    <button data-view="svc-lawn"><span class="dot" style="background:var(--s-lawn)"></span>Lawn</button>
+    <button data-view="svc-fall"><span class="dot" style="background:var(--s-fall)"></span>Fall</button>
+    <button data-view="svc-snow"><span class="dot" style="background:#9ec3f0"></span>Snow</button>
+    <button data-view="svc-landscaping"><span class="dot" style="background:var(--s-landscaping)"></span>Landscaping</button>
+    <button data-view="svc-lights"><span class="dot" style="background:var(--s-lights)"></span>Lights</button>
+    <div class="more" id="more">
+      <button id="moreBtn" aria-haspopup="menu" aria-expanded="false">More <span class="caret">&#9662;</span></button>
+      <div class="menu" id="moreMenu" role="menu">
+        <button data-view="contracts" role="menuitem">Contracts</button>
+        <button data-view="tools" role="menuitem">QuickBooks and export</button>
+        <button data-view="import" role="menuitem">Import CSV</button>
+        <button data-view="trash" role="menuitem">Trash</button>
+      </div>
+    </div>
+  </nav>
+  <div class="right">
+    <a class="xlink" href="./index.html">Projects</a>
+    <a class="xlink here" href="./crm.html">CRM</a>
+    <a class="xlink" href="./routes.html">Routes</a>
+    <div class="who" id="who"></div>
+    <button class="ghost small" id="undoBtn" hidden>Undo</button>
+    <button class="ghost small" id="signout" hidden>Sign out</button>
+  </div>
+</header>
+
+<div id="gate" class="card" hidden>
+  <h2>Sign in</h2>
+  <p class="meta">Admin team only. Use the Google account Russel added to the team list.</p>
+  <button class="primary" id="signin">Sign in with Google</button>
+  <p class="meta" id="gateMsg"></p>
+</div>
+
+<div id="app" hidden>
+  <main id="main"></main>
+</div>
+
+<!-- Client dialog -->
+<dialog id="clientDlg" class="big">
+  <form class="body" id="clientForm" onsubmit="return false">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <h3 id="clientTitle">Client</h3>
+      <div class="kv" id="clientStamps"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Name</label><input name="name"></div>
+      <div><label>Phone</label><input name="phone" type="tel" id="dlgPhone"></div>
+      <div style="grid-column:1/-1" id="dlgDup"></div>
+      <div><label>Email</label><input name="email" type="email"></div>
+      <div><label>Region</label><select name="region" id="regionSel"></select></div>
+      <div style="grid-column:1/-1"><label>Address</label><input name="address" placeholder="Street, City"></div>
+      <div><label>Status</label><select name="status" id="statusSel"></select></div>
+      <div><label>Lead source</label><select name="source" id="sourceSel"></select></div>
+      <div style="grid-column:1/-1"><label>Interested in / summary</label><input name="interest" placeholder="What they asked about, or a one-line summary"></div>
+    </div>
+
+    <div class="sect">Services <span class="n" id="svcCount"></span><span style="margin-left:auto"></span><select id="addSvcSel" style="width:auto;padding:3px 6px;font-size:13px"><option value="">+ Add service</option></select></div>
+    <div id="svcList"></div>
+
+    <div class="sect">Contracts <span class="n" id="ctrCount"></span></div>
+    <div id="ctrList"></div>
+
+    <div class="sect">Billing <span class="n">(status only; QuickBooks holds the ledger)</span></div>
+    <div class="grid3">
+      <div><label>Payment method</label><select name="payMethod" id="payMethodSel"></select></div>
+      <div><label>Payment status</label><select name="payStatus" id="payStatusSel"></select></div>
+      <div><label>QuickBooks customer ID</label><input name="qbId" placeholder="filled in by Claude"></div>
+    </div>
+
+    <div class="sect">Contact log <span class="n" id="logCount"></span></div>
+    <div class="log" id="logList"></div>
+    <div class="addnote" id="addNote"><textarea id="noteText" placeholder="What happened on this call or visit. Saved with the time you press Add."></textarea><button type="button" class="primary" id="noteAdd">Add note</button></div>
+
+    <div class="actions">
+      <button type="button" class="danger left" id="clientTrash">Move to Trash</button>
+      <button type="button" id="clientCancel">Cancel</button>
+      <button type="button" class="primary" id="clientSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Contract signing / viewing, full screen -->
+<dialog id="signDlg" class="sign">
+  <div class="signbar"><h3 id="signTitle">Contract</h3><button type="button" class="ghost small" id="signClose">Close</button></div>
+  <div class="signbody" id="signBody"></div>
+</dialog>
+
+<!-- Template editor -->
+<dialog id="tplDlg" class="big">
+  <div class="body">
+    <h3 id="tplTitle">Contract template</h3>
+    <div class="grid2">
+      <div><label>Name</label><input id="tplName" placeholder="Fall Cleanup Agreement"></div>
+      <div><label>Applies to these services</label><div id="tplSvcs" class="row" style="padding-top:6px"></div></div>
+    </div>
+    <div class="row" style="margin-top:10px;gap:18px">
+      <label class="row" style="margin:0;color:var(--ink);font-size:14px"><input type="checkbox" id="tplActive"> Active (assigned to clients)</label>
+      <label class="row" style="margin:0;color:var(--ink);font-size:14px"><input type="checkbox" id="tplSample"> Sample text (not for real clients)</label>
+    </div>
+    <label>Contract text</label>
+    <div class="row" style="margin-bottom:6px"><input type="file" id="tplFile" accept=".txt,.md,text/plain,text/markdown" style="width:auto"><span class="meta">Upload a .txt or .md file, or paste below.</span><button type="button" class="small" id="tplPreviewBtn" style="margin-left:auto">Preview</button></div>
+    <textarea id="tplBody" class="code"></textarea>
+    <div id="tplPreview" hidden style="margin-top:10px"></div>
+    <details style="margin-top:10px"><summary class="meta" style="cursor:pointer">What can go in the text</summary>
+      <div class="meta" style="margin-top:6px;line-height:1.7">
+        Filled in automatically: <code>{{client.name}}</code> <code>{{client.address}}</code> <code>{{client.phone}}</code> <code>{{client.email}}</code> <code>{{service.price}}</code> <code>{{service.package}}</code> <code>{{service.start}}</code> <code>{{service.end}}</code> <code>{{service.install}}</code> <code>{{service.takedown}}</code> <code>{{service.day}}</code> <code>{{service.freq}}</code> <code>{{service.desc}}</code> <code>{{service.date}}</code> <code>{{service.notes}}</code> <code>{{today}}</code><br>
+        A box the client ticks: <code>[[check:haul|Haul leaves off site]]</code> (the word before the bar is a short key, no spaces)<br>
+        A line the client initials: <code>[[initial:terms]]</code><br>
+        Headings: a line starting with <code># </code>, <code>## </code>, or <code>### </code>. Bold: <code>**text**</code>. Lists: lines starting with <code>- </code> or <code>1. </code>. A blank line starts a new paragraph.<br>
+        Saving changed text raises the version number. Contracts already signed keep the exact text they were signed with.
+      </div>
+    </details>
+    <div class="actions">
+      <span class="meta left" id="tplVer"></span>
+      <button type="button" id="tplCancel">Cancel</button>
+      <button type="button" class="primary" id="tplSave">Save template</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+// ===== CONFIG: same Firebase project as the Projects page =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDLndoLTcm8zKyN3WlVfYoGVQmVlbMlib4",
+  authDomain: "mb-projects-c4383.firebaseapp.com",
+  databaseURL: "https://mb-projects-c4383-default-rtdb.firebaseio.com",
+  projectId: "mb-projects-c4383",
+  storageBucket: "mb-projects-c4383.firebasestorage.app",
+  messagingSenderId: "246828597156",
+  appId: "1:246828597156:web:dfa85db16f51d85b5fcb31"
+};
+const ADMIN_EMAIL = "russel.mangiapaneiii@gmail.com";
+const COMPANY = "Mangiapane Brothers Lawn and Snow LLC";
+// Where each clearance tier lands. A person whose tier is not admin is sent to his page.
+const TIER_HOME = { admin:"index.html", crew:"my.html", walker:"routes.html" };
+// ================================================================
+
+// ===== LISTS: edit these to add a region, source, or service type =====
+const REGIONS = ["Rosedale Gardens","Newburgh / 7 Mile","Other Livonia","Westland","Other"];
+const SOURCES = ["Angi","Door hanger","Referral","Website","Google","Yard sign","Other"];
+const STATUSES = { new:"New lead", contacted:"Contacted", quoted:"Quoted", active:"Active client", paused:"Paused", former:"Former client", lost:"Lost" };
+const LEAD_STAGES = ["new","contacted","quoted"];
+const GOPAY = "Card (QuickBooks GoPayment)";
+const PAY_METHODS = ["",GOPAY,"Check","Cash","Zelle","Other"];
+const PAY_STATUSES = { "":"", paid:"Paid", open:"Open", pastdue:"Past due" };
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+// Each service type: label, and the fields its entry carries. A new type is one more block here
+// plus a nav button and a --s-<key> color pair in the CSS.
+const SERVICE_TYPES = {
+  lawn: { label:"Lawn", fields:[
+    {k:"day",l:"Day",t:"select",o:["",...DAYS]},
+    {k:"freq",l:"Frequency",t:"select",o:["Weekly","Biweekly"]},
+    {k:"price",l:"Price per cut",t:"money"},
+    {k:"season",l:"Season",t:"select",o:["On","Off"]},
+    {k:"notes",l:"Notes",t:"text"} ],
+    summary:s=>[s.day, s.freq, money(s.price), s.season==="Off"?"off season":""].filter(Boolean).join(" · ") },
+  fall: { label:"Fall Cleanup", fields:[
+    {k:"package",l:"Package",t:"select",o:["Two passes","One pass"]},
+    {k:"route",l:"Route",t:"select",o:["Route 1","Route 2","Route 3"]},
+    {k:"price",l:"Price",t:"money"},
+    {k:"pass1",l:"Pass 1 done",t:"check"},
+    {k:"pass2",l:"Pass 2 done",t:"check"},
+    {k:"notes",l:"Notes",t:"text"} ],
+    summary:s=>[s.package, s.route, money(s.price), s.pass1?"P1 ✓":"", s.pass2?"P2 ✓":""].filter(Boolean).join(" · ") },
+  snow: { label:"Snow", fields:[
+    {k:"price",l:"Seasonal price",t:"money"},
+    {k:"crew",l:"Crew",t:"select",o:["","Crew 1","Crew 2"]},
+    {k:"start",l:"Contract start",t:"date",d:"2026-11-01"},
+    {k:"end",l:"Contract end",t:"date",d:"2027-03-15"},
+    {k:"notes",l:"Notes",t:"text"} ],
+    summary:s=>[money(s.price), s.crew, s.start?fmtDate(s.start)+" to "+fmtDate(s.end):""].filter(Boolean).join(" · ") },
+  landscaping: { label:"Landscaping", fields:[
+    {k:"desc",l:"Job",t:"text",w:2},
+    {k:"jobStatus",l:"Status",t:"select",o:["Quoted","Scheduled","Done"]},
+    {k:"date",l:"Date",t:"date"},
+    {k:"price",l:"Price / quote",t:"money"},
+    {k:"notes",l:"Notes",t:"text"} ],
+    summary:s=>[s.desc, s.jobStatus, s.date?fmtDate(s.date):"", money(s.price)].filter(Boolean).join(" · ") },
+  lights: { label:"Christmas Lights", fields:[
+    {k:"install",l:"Install date",t:"date"},
+    {k:"takedown",l:"Takedown date",t:"date"},
+    {k:"price",l:"Price",t:"money"},
+    {k:"gutters",l:"Bundled with gutters",t:"check"},
+    {k:"notes",l:"Notes",t:"text"} ],
+    summary:s=>[s.install?"install "+fmtDate(s.install):"", s.takedown?"down "+fmtDate(s.takedown):"", money(s.price), s.gutters?"w/ gutters":""].filter(Boolean).join(" · ") }
+};
+// ================================================================
+
+// ===== SAMPLE CONTRACTS: loaded once into an empty Contracts list. Replace the text in More > Contracts. =====
+const SAMPLE_TEMPLATES = {
+  tpl_fall: { name:"Fall Cleanup Agreement", services:{fall:true}, active:true, sample:true, version:1, body:
+`# SAMPLE Fall Cleanup Agreement
+
+**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
+
+This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
+
+## Property
+{{client.address}}
+Phone: {{client.phone}}
+Email: {{client.email}}
+
+## Service
+Fall cleanup, {{service.package}}. On each pass the Company removes leaves from the lawn and beds and clears the gutters.
+
+Price: **{{service.price}}** for the season.
+
+## Choices
+[[check:haul|Haul all leaves off the property]]
+[[check:beds|Cut back perennials in the beds on the last pass]]
+[[check:photos|The Company may photograph the property for its records]]
+
+## Terms
+1. Pass dates depend on leaf drop and weather. The Company will text the Client the day before each pass.
+2. Payment is due at signing unless the Company agrees to invoice.
+3. The Client keeps gates unlocked and pets inside on service days.
+4. Either party may cancel before the first pass by phone or email.
+
+Client initials to confirm the terms above: [[initial:terms]]
+
+Signed on {{today}}.` },
+  tpl_snow: { name:"Seasonal Snow Agreement", services:{snow:true}, active:true, sample:true, version:1, body:
+`# SAMPLE Seasonal Snow Removal Agreement
+
+**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
+
+This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
+
+## Property
+{{client.address}}
+Phone: {{client.phone}}
+
+## Season and price
+The season runs from {{service.start}} through {{service.end}}. The seasonal price is **{{service.price}}**, no matter how many times it snows.
+
+## Service
+The Company plows the driveway and clears the front walk after each snowfall of two inches or more.
+
+## Choices
+[[check:salt|Salt the walk and driveway apron after each visit]]
+[[check:mailbox|Clear the path to the mailbox]]
+[[check:markers|The Company may place driveway markers before the first snow]]
+
+## Terms
+1. The Company is not responsible for damage to items left in the driveway or hidden under snow.
+2. Visits begin once snowfall stops or reaches two inches, whichever comes first.
+3. Payment is due at signing unless the Company agrees to invoice.
+
+Client initials to confirm the terms above: [[initial:terms]]
+
+Signed on {{today}}.` },
+  tpl_lights: { name:"Christmas Lights Agreement", services:{lights:true}, active:true, sample:true, version:1, body:
+`# SAMPLE Christmas Lights Agreement
+
+**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
+
+This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
+
+## Property
+{{client.address}}
+Phone: {{client.phone}}
+
+## Service
+Install on {{service.install}}. Takedown on {{service.takedown}}.
+
+Price: **{{service.price}}**, covering install, service calls for outages during the season, and takedown.
+
+## Choices
+[[check:timer|Install a timer on the outdoor outlet]]
+[[check:store|The Company stores the lights until next season]]
+[[check:photos|The Company may photograph the display for its marketing]]
+
+## Terms
+1. The Client provides a working outdoor outlet.
+2. The Company repairs outages within two business days of a call.
+3. Payment is due at signing unless the Company agrees to invoice.
+
+Client initials to confirm the terms above: [[initial:terms]]
+
+Signed on {{today}}.` }
+};
+// ================================================================
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const emailKey = e => e.toLowerCase().replace(/\./g, ",");
+// The business runs on Michigan time, not UTC.
+const TZ = "America/Detroit";
+const today = () => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+function toast(m){ const t=$("#toast"); t.textContent=m; t.style.pointerEvents="none"; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),2600); }
+function fmtDate(d){ if(!d) return ""; const [y,m,dd]=d.split("-"); return `${+m}/${+dd}/${y.slice(2)}`; }
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function fmtLong(d){ if(!d) return ""; const [y,m,dd]=d.split("-"); return `${MONTHS[+m-1]} ${+dd}, ${y}`; }
+function fmtStamp(ms){ if(!ms) return ""; const d=new Date(ms); return d.toLocaleDateString("en-US",{timeZone:TZ,month:"numeric",day:"numeric",year:"2-digit"})+" "+d.toLocaleTimeString("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit"}); }
+function ago(ms){ if(!ms) return "never"; const d=Math.floor((Date.now()-ms)/864e5); if(d<=0) return "today"; if(d===1) return "yesterday"; if(d<30) return d+"d ago"; const m=Math.floor(d/30); return m<12 ? m+"mo ago" : Math.floor(m/12)+"y ago"; }
+function money(v){ if(v===""||v==null||isNaN(+v)) return ""; return "$"+(+v).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+const tel = p => p ? `<a href="tel:${esc(p.replace(/[^\d+]/g,""))}" style="color:inherit">${esc(p)}</a>` : "";
+// Phone key: the number in E.164 form (+1 and ten digits). Used for duplicate checks and Quo matching.
+function phoneKey(p){ const d=String(p||"").replace(/\D/g,""); if(d.length===10) return "+1"+d; if(d.length===11 && d[0]==="1") return "+"+d; return d.length>=10 ? "+"+d : ""; }
+
+let me=null, myTier="", isRussel=false, view="leads";
+let clients={}, logs={}, templates={}, qbRows={};
+let filters = { q:"", region:"", svc:"", status:"" };
+let sort = { key:"name", dir:1 };
+try{ const sv=JSON.parse(localStorage.getItem("crmSort")||"null"); if(sv&&sv.key) sort=sv; }catch(e){}
+const SORTS = { name:"Name", address:"Address", region:"Region", services:"Services", status:"Status", pay:"Billing", first:"First contact", last:"Last contact" };
+const PAY_ORDER = { pastdue:0, open:1, paid:2, "":3 };
+const STATUS_ORDER = { active:0, paused:1, former:2, new:3, contacted:4, quoted:5, lost:6 };
+function sortRows(rows){
+  const k=sort.key, d=sort.dir;
+  const val = c => k==="name" ? (c.name||"").toLowerCase() : k==="address" ? (c.address||"").toLowerCase() : k==="region" ? (c.region||"zz") : k==="services" ? -svcList(c).length : k==="status" ? (STATUS_ORDER[c.status]??9) : k==="pay" ? (PAY_ORDER[c.payStatus||""]??9) : k==="first" ? -(c.firstContactAt||c.createdAt||0) : -(lastContact(c)||0);
+  return rows.sort((a,b)=>{ const x=val(a[1]), y=val(b[1]); const r = x<y?-1 : x>y?1 : (a[1].name||"").localeCompare(b[1].name||""); return r*d; });
+}
+function setSort(key){ if(sort.key===key) sort.dir=-sort.dir; else sort={key, dir:1}; try{ localStorage.setItem("crmSort", JSON.stringify(sort)); }catch(e){} render(); }
+
+// ---------- auth and clearance tiers ----------
+$("#signin").onclick = async () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  try { await auth.signInWithPopup(p); }
+  catch(e){ if(/popup/.test(e.code)) auth.signInWithRedirect(p); else $("#gateMsg").textContent = e.message; }
+};
+$("#signout").onclick = () => auth.signOut();
+$("#undoBtn").onclick = undo;
+document.addEventListener("keydown", e => { if((e.metaKey||e.ctrlKey) && e.key==="z" && !e.target.matches("input,textarea")){ e.preventDefault(); undo(); } });
+
+function gateMsg(m){ $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#gateMsg").textContent=m; }
+// One-time move to tiers: entries made before tiers existed become admin. Only Russel runs it.
+async function migrateTiers(){
+  const all=(await db.ref("allowed").once("value")).val()||{}; const upd={};
+  for(const [k,v] of Object.entries(all)) if(v && !v.tier) upd["allowed/"+k+"/tier"]="admin";
+  if(Object.keys(upd).length) await db.ref().update(upd);
+}
+auth.onAuthStateChanged(async user => {
+  me = user; isRussel = !!user && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  $("#who").textContent = user ? user.email : "";
+  $("#signout").hidden = !user;
+  if(!user){ $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#gateMsg").textContent=""; detach(); return; }
+  try {
+    if(isRussel){
+      await db.ref("allowed/"+emailKey(user.email)).update({ name: user.displayName || "Russel", email: user.email.toLowerCase(), tier:"admin" });
+      await migrateTiers().catch(()=>{});
+    }
+    const mine = (await db.ref("allowed/"+emailKey(user.email)).once("value")).val();
+    if(!mine) return gateMsg(`${user.email} is not on the team list. Ask Russel to add it on the Projects page, then sign out and back in.`);
+    myTier = mine.tier || "";
+    if(myTier !== "admin"){
+      if(TIER_HOME[myTier]){ location.replace(TIER_HOME[myTier]); return; }
+      return gateMsg(`${user.email} is on the list but has no access level yet. Ask Russel to open the Projects page once, then try again.`);
+    }
+    $("#gate").hidden=true; $("#app").hidden=false; $("#nav").hidden=false; attach();
+  } catch(e){
+    gateMsg(`${user.email} could not be checked against the team list (${e.code||e.message}). Ask Russel.`);
+  }
+});
+
+// ---------- realtime ----------
+const refs = {}; let backfilled=false;
+function attach(){
+  refs.c = db.ref("clients"); refs.l = db.ref("clientLog"); refs.t = db.ref("contractTemplates"); refs.q = db.ref("sync/qb");
+  refs.c.on("value", s => { clients = s.val()||{}; render(); if(openId) refreshDialogLive(); if(!backfilled){ backfilled=true; backfillPhones(); } });
+  refs.l.on("value", s => { logs = s.val()||{}; render(); if(openId) renderLog(); });
+  refs.t.on("value", s => { templates = s.val()||{}; render(); if(openId) renderContracts(); });
+  refs.q.on("value", s => { qbRows = s.val()||{}; if(view==="tools") render(); });
+  refs.c.once("value").then(autoPurge);
+  refs.t.once("value").then(s => { if(!s.exists()) seedTemplates(); });
+}
+function detach(){ Object.values(refs).forEach(r => r && r.off()); }
+function seedTemplates(){
+  const now=Date.now(), upd={};
+  for(const [id,t] of Object.entries(SAMPLE_TEMPLATES)) upd["contractTemplates/"+id] = {...t, createdAt:now, updatedAt:now, updatedBy:me.email};
+  return db.ref().update(upd);
+}
+// Records saved before phone keys existed get one, plus a phone index entry, once.
+function backfillPhones(){
+  const upd={};
+  live().forEach(([id,c])=>{ const k=phoneKey(c.phone); if(k && c.phoneKey!==k){ upd["clients/"+id+"/phoneKey"]=k; upd["phoneIndex/"+k]=id; } });
+  if(Object.keys(upd).length) db.ref().update(upd).catch(()=>{});
+}
+
+// ---------- writes, undo, trash ----------
+const stamp = () => ({ updatedAt: Date.now(), updatedBy: me.email });
+const phoneIndexMap = () => { const m={}; Object.entries(clients).forEach(([id,c])=>{ if(c.phoneKey && !c.deletedAt) m[c.phoneKey]=id; }); return m; };
+const cache = { clients: () => clients, clientLog: () => logs, phoneIndex: phoneIndexMap, sync: () => ({qb:qbRows}) };
+function getAt(path){ const [root, ...rest] = path.split("/"); let v = cache[root] ? cache[root]() : undefined; for(const k of rest){ if(v==null) return null; v = v[k]; } return v === undefined ? null : JSON.parse(JSON.stringify(v)); }
+const undoStack = [];
+async function commit(label, updates){
+  const revert = {}; for(const p of Object.keys(updates)) revert[p] = getAt(p);
+  await db.ref().update(updates);
+  undoStack.push({ label, revert }); if(undoStack.length > 30) undoStack.shift();
+  showUndo(label);
+}
+async function undo(){
+  const a = undoStack.pop(); if(!a) return toast("Nothing to undo");
+  await db.ref().update(a.revert); toast("Undid: " + a.label); renderUndoBtn();
+}
+function renderUndoBtn(){ const b=$("#undoBtn"); b.hidden = !undoStack.length; b.title = undoStack.length ? "Undo: " + undoStack[undoStack.length-1].label : ""; }
+let undoTimer;
+function showUndo(label){
+  renderUndoBtn();
+  const t=$("#toast"); t.innerHTML = `${esc(label)} <button class="small" id="toastUndo" style="margin-left:10px;background:transparent;color:inherit;border-color:currentColor">Undo</button>`; t.style.pointerEvents="auto"; t.classList.add("show");
+  $("#toastUndo").onclick = () => { t.classList.remove("show"); undo(); };
+  clearTimeout(undoTimer); undoTimer = setTimeout(()=>{ t.classList.remove("show"); t.style.pointerEvents="none"; }, 8000);
+}
+function fieldUpdates(base, data){ const u={}; for(const [k,v] of Object.entries(data)) u[base+"/"+k]=(v===undefined?null:v); return u; }
+// Phone key and index for a client, removing the old index entry if the number changed.
+function phoneUpdates(id, phone){
+  const k=phoneKey(phone), prev=clients[id]?.phoneKey, u={};
+  u["clients/"+id+"/phoneKey"] = k || null;
+  if(prev && prev!==k && phoneIndexMap()[prev]===id) u["phoneIndex/"+prev]=null;
+  if(k) u["phoneIndex/"+k]=id;
+  return u;
+}
+function findByPhone(phone, exceptId){
+  const k=phoneKey(phone); if(!k) return null;
+  const hit = live().find(([id,c])=>id!==exceptId && (c.phoneKey||phoneKey(c.phone))===k);
+  return hit ? {id:hit[0], c:hit[1]} : null;
+}
+function dupHtml(hit){ return `<div class="warnline">Already in the CRM: <b>${esc(hit.c.name)}</b>, ${esc(STATUSES[hit.c.status]||hit.c.status)}${tags(hit.c)?", ":""}${tags(hit.c)} <button type="button" class="small" data-open-dup="${hit.id}">Open record</button></div>`; }
+function saveClient(id, data, label){
+  const isNew=!id; id = id || db.ref("clients").push().key;
+  const extra = isNew ? { createdAt: Date.now(), createdBy: me.email, firstContactAt: Date.now() } : {};
+  return commit(label || (isNew ? "Added "+data.name : "Edited "+data.name), {...fieldUpdates("clients/"+id, {...data, ...stamp(), ...extra}), ...phoneUpdates(id, data.phone)}).then(()=>id);
+}
+// QuickBooks work waiting for Claude. Customer rows are queued once per client.
+function qbCustomerRow(id, known){
+  const c=known||clients[id]; if(!c || c.qbId) return {};
+  const pending = Object.values(qbRows).some(r=>r.clientId===id && r.type==="customer" && r.status==="pending"); if(pending) return {};
+  const rid=db.ref("sync/qb").push().key;
+  return { ["sync/qb/"+rid]: { type:"customer", clientId:id, status:"pending", createdAt:Date.now(), createdBy:me.email } };
+}
+function setStatus(id, status){
+  const c=clients[id]; if(!c || c.status===status) return;
+  const upd = fieldUpdates("clients/"+id, { status, ...stamp() });
+  if(status==="active" && !c.wonAt) upd["clients/"+id+"/wonAt"]=Date.now();
+  if(status==="active") Object.assign(upd, qbCustomerRow(id));
+  if(status==="lost") upd["clients/"+id+"/lostAt"]=Date.now();
+  return commit(`${c.name}: ${STATUSES[status]}`, upd);
+}
+function addNote(id, text){
+  const eid = db.ref("clientLog/"+id).push().key; const now=Date.now();
+  return commit("Added note", { ["clientLog/"+id+"/"+eid]: { text, at: now, by: me.email }, ["clients/"+id+"/lastContactAt"]: now, ["clients/"+id+"/updatedAt"]: now, ["clients/"+id+"/updatedBy"]: me.email });
+}
+function trashClient(id){ return commit("Moved "+clients[id].name+" to Trash", { ["clients/"+id+"/deletedAt"]: Date.now(), ["clients/"+id+"/deletedBy"]: me.email }); }
+function restoreClient(id){ return commit("Restored "+clients[id].name, { ["clients/"+id+"/deletedAt"]: null, ["clients/"+id+"/deletedBy"]: null }); }
+// Signed contracts are never deleted, even when the client record is.
+function purgeUpdates(id){ const u={ ["clients/"+id]: null, ["clientLog/"+id]: null }; const k=clients[id]?.phoneKey; if(k){ const owner=live().find(([x,c])=>x!==id && c.phoneKey===k); u["phoneIndex/"+k]= owner ? owner[0] : null; } return u; }
+function purgeClient(id){ return commit("Deleted "+clients[id].name+" permanently", purgeUpdates(id)); }
+function autoPurge(){
+  const cutoff = Date.now() - 30*864e5; const upd={};
+  Object.entries(clients).forEach(([id,c])=>{ if(c.deletedAt && c.deletedAt < cutoff) Object.assign(upd, purgeUpdates(id)); });
+  if(Object.keys(upd).length) db.ref().update(upd);
+}
+
+// ---------- helpers ----------
+const live = () => Object.entries(clients).filter(([,c])=>!c.deletedAt);
+const svcList = c => Object.entries(c.services||{}).map(([sid,s])=>({sid,...s}));
+const hasSvc = (c,type) => svcList(c).some(s=>s.type===type);
+function tags(c){
+  const order = Object.keys(SERVICE_TYPES);
+  const have = new Set(svcList(c).map(s=>s.type));
+  return order.filter(t=>have.has(t)).map(t=>{ const off = t==="lawn" && svcList(c).some(s=>s.type==="lawn" && s.season==="Off"); return `<span class="tag ${t}${off?" off":""}">${esc(SERVICE_TYPES[t].label)}</span>`; }).join(" ");
+}
+const statusPill = s => `<span class="pill ${esc(s)}">${esc(STATUSES[s]||s)}</span>`;
+const payPill = c => c.payStatus ? `<span class="pill ${esc(c.payStatus)}">${esc(PAY_STATUSES[c.payStatus]||c.payStatus)}</span>` : "";
+const lastContact = c => c.lastContactAt || c.firstContactAt || c.createdAt;
+function opts(list, cur, labels){ return list.map(v=>`<option value="${esc(v)}"${v===cur?" selected":""}>${esc(labels && labels[v]!==undefined ? labels[v] : v)}</option>`).join(""); }
+function groupBy(arr, fn){ const m={}; arr.forEach(x=>{ const k=fn(x)||"Unassigned"; (m[k]=m[k]||[]).push(x); }); return m; }
+const byName = (a,b) => (a[1].name||"").localeCompare(b[1].name||"");
+
+// ---------- contracts: which ones a client needs ----------
+// Every active template that covers a service type the client has, once per service entry.
+// A need is met by the newest signed, not voided contract for that template and that service.
+function contractNeeds(c){
+  const out=[]; const mir=c.contracts||{};
+  for(const s of svcList(c)) for(const [tid,t] of Object.entries(templates)){
+    if(t.active===false || !(t.services||{})[s.type]) continue;
+    const signed = Object.entries(mir).filter(([,m])=>m.tpl===tid && m.sid===s.sid && m.status==="signed" && !m.voided).sort((a,b)=>b[1].signedAt-a[1].signedAt)[0] || null;
+    out.push({tid, t, sid:s.sid, s, signed});
+  }
+  return out;
+}
+const unsignedFor = (c, sid) => (c.status==="active"||c.status==="quoted") && contractNeeds(c).some(x=>!x.signed && (!sid || x.sid===sid));
+const unsignedPill = (c, sid) => unsignedFor(c, sid) ? ` <span class="pill unsigned" title="A required contract is not signed">unsigned</span>` : "";
+
+// ---------- render ----------
+function render(){
+  renderUndoBtn();
+  const m=$("#main"); m.classList.toggle("wide", view==="leads");
+  if(view==="leads") return renderLeads(m);
+  if(view==="clients") return renderClients(m);
+  if(view.startsWith("svc-")) return renderService(m, view.slice(4));
+  if(view==="import") return renderImport(m);
+  if(view==="tools") return renderTools(m);
+  if(view==="trash") return renderTrash(m);
+  if(view==="contracts") return renderContractsView(m);
+}
+
+// Leads board
+let quickDupAck=null;
+function renderLeads(m){
+  const leads = live().filter(([,c])=>LEAD_STAGES.includes(c.status));
+  const won = live().filter(([,c])=>c.status==="active" && c.wonAt && Date.now()-c.wonAt < 30*864e5);
+  const lost = live().filter(([,c])=>c.status==="lost");
+  const src = groupBy(leads, ([,c])=>c.source);
+  const cols = [
+    ...LEAD_STAGES.map(s=>({key:s,label:STATUSES[s],items:leads.filter(([,c])=>c.status===s)})),
+    {key:"active",label:"Won (last 30 days)",items:won,cls:"won"},
+    {key:"lost",label:"Lost",items:lost,cls:"lost"} ];
+  const card = ([id,c]) => {
+    const lc = lastContact(c); const stale = LEAD_STAGES.includes(c.status) && Date.now()-lc > 5*864e5;
+    return `<div class="lead" draggable="true" data-id="${id}">
+      <div class="name">${esc(c.name)}${unsignedPill(c)}</div>
+      <div class="meta">${tel(c.phone)}${c.region?" · "+esc(c.region):""}</div>
+      <div class="meta">${esc(c.source||"")}${c.interest?" · "+esc(c.interest):""}</div>
+      <div class="meta">${tags(c)}${tags(c)?" · ":""}<span class="${stale?"stale":""}">last contact ${ago(lc)}</span></div>
+      <select data-stage="${id}">${opts([...LEAD_STAGES,"active","lost"], c.status, {...STATUSES, active:"Won → Active client"})}</select>
+    </div>`; };
+  // Keep what was typed in the quick-add form across live re-renders.
+  const prev = $("#quickAdd") ? Object.fromEntries(new FormData($("#quickAdd")).entries()) : null;
+  const focusName = document.activeElement?.closest?.("#quickAdd") ? document.activeElement.name : null;
+  m.innerHTML = `
+    <div class="card">
+      <form class="quick" id="quickAdd" onsubmit="return false">
+        <div><label>Name</label><input name="name" placeholder="Name" autocomplete="off"></div>
+        <div><label>Phone</label><input name="phone" type="tel" placeholder="734..."></div>
+        <div><label>Address</label><input name="address" placeholder="Street, City"></div>
+        <div><label>Region</label><select name="region"><option value="">Region</option>${opts(REGIONS,"")}</select></div>
+        <div><label>Source</label><select name="source"><option value="">Source</option>${opts(SOURCES,"")}</select></div>
+        <div><label>Interested in</label><input name="interest" placeholder="Lawn, snow, mulch..."></div>
+        <button class="primary" type="button" id="quickGo">Add lead</button>
+      </form>
+      <div id="quickDup"></div>
+      <div class="meta" style="margin-top:6px">Type while on the call. A number already in the CRM is flagged as you type. First contact is stamped when you press Add. Open a card to log notes. Drag cards between columns, or use the dropdown on a phone.</div>
+    </div>
+    <div class="srcstrip">${SOURCES.map(s=>`<span class="pill">${esc(s)} <b>${(src[s]||[]).length}</b></span>`).join("")}</div>
+    <div class="board">${cols.map(col=>`
+      <div class="col ${col.cls||""}" data-col="${col.key}"><h2>${esc(col.label)}<span class="n">${col.items.length}</span></h2>
+        ${col.items.sort((a,b)=>lastContact(b[1])-lastContact(a[1])).map(card).join("") || `<div class="empty" style="padding:12px">None</div>`}
+      </div>`).join("")}
+    </div>`;
+  const form=$("#quickAdd");
+  if(prev){ for(const [k,v] of Object.entries(prev)) if(form.elements[k]) form.elements[k].value=v; if(focusName && form.elements[focusName]){ const el=form.elements[focusName]; el.focus(); try{ el.setSelectionRange(el.value.length,el.value.length); }catch(e){} } }
+  const showDup = () => { const hit=findByPhone(form.phone.value); $("#quickDup").innerHTML = hit ? dupHtml(hit) : ""; wireDup($("#quickDup")); if(!hit) quickDupAck=null; return hit; };
+  form.phone.oninput = showDup; showDup();
+  const quick = async () => {
+    const d=Object.fromEntries(new FormData(form).entries());
+    if(!d.name.trim()){ toast("Name is required"); form.name.focus(); return; }
+    if(!d.source){ toast("Pick a lead source"); form.source.focus(); return; }
+    const hit=findByPhone(d.phone);
+    if(hit && quickDupAck!==hit.id){ quickDupAck=hit.id; toast(`That number belongs to ${hit.c.name}. Open the record, or press Add lead again to add a second record.`); return; }
+    quickDupAck=null;
+    await saveClient(null, { name:d.name.trim(), phone:d.phone.trim(), address:d.address.trim(), region:d.region, source:d.source, interest:d.interest.trim(), status:"new", lastContactAt: Date.now() }, "Added lead "+d.name.trim());
+    form.reset(); $("#quickDup").innerHTML=""; form.name.focus();
+  };
+  $("#quickGo").onclick = quick;
+  form.onkeydown = e => { if(e.key==="Enter" && e.target.tagName==="INPUT"){ e.preventDefault(); quick(); } };
+  m.querySelectorAll(".lead").forEach(el=>{
+    el.onclick = e => { if(e.target.tagName!=="SELECT" && e.target.tagName!=="A") openClient(el.dataset.id); };
+    el.ondragstart = e => { e.dataTransfer.setData("text/plain", el.dataset.id); el.classList.add("dragging"); };
+    el.ondragend = () => el.classList.remove("dragging");
+  });
+  m.querySelectorAll("select[data-stage]").forEach(s=> s.onchange = () => setStatus(s.dataset.stage, s.value));
+  m.querySelectorAll(".col").forEach(col=>{
+    col.ondragover = e => { e.preventDefault(); col.classList.add("drop"); };
+    col.ondragleave = () => col.classList.remove("drop");
+    col.ondrop = e => { e.preventDefault(); col.classList.remove("drop"); const id=e.dataTransfer.getData("text/plain"); if(id) setStatus(id, col.dataset.col); };
+  });
+}
+function wireDup(root){ root.querySelectorAll("[data-open-dup]").forEach(b=>b.onclick=()=>{ const id=b.dataset.openDup; if($("#clientDlg").open) $("#clientDlg").close(); openClient(id); }); }
+
+// Clients list
+function renderClients(m){
+  const th = (k,l) => `<th class="sortable${sort.key===k?" on":""}" data-sort="${k}">${esc(l)}${sort.key===k?(sort.dir===1?" ▴":" ▾"):""}</th>`;
+  let rows = live().filter(([,c])=>!LEAD_STAGES.includes(c.status) && c.status!=="lost");
+  const q=filters.q.toLowerCase();
+  if(q) rows = rows.filter(([,c])=>[c.name,c.phone,c.address,c.email,c.interest].join(" ").toLowerCase().includes(q));
+  if(filters.region) rows = rows.filter(([,c])=>c.region===filters.region);
+  if(filters.svc) rows = rows.filter(([,c])=>hasSvc(c,filters.svc));
+  if(filters.status==="unsigned") rows = rows.filter(([,c])=>unsignedFor(c));
+  else if(filters.status) rows = rows.filter(([,c])=>c.status===filters.status);
+  sortRows(rows);
+  const counts = {}; Object.keys(SERVICE_TYPES).forEach(t=>counts[t]=live().filter(([,c])=>c.status==="active"&&hasSvc(c,t)).length);
+  const nUnsigned = live().filter(([,c])=>unsignedFor(c)).length;
+  m.innerHTML = `
+    <div class="filters">
+      <input type="search" id="fq" placeholder="Search name, phone, address" value="${esc(filters.q)}">
+      <select id="fregion"><option value="">All regions</option>${opts(REGIONS,filters.region)}</select>
+      <select id="fsvc"><option value="">All services</option>${Object.entries(SERVICE_TYPES).map(([k,v])=>`<option value="${k}"${filters.svc===k?" selected":""}>${esc(v.label)}</option>`).join("")}</select>
+      <select id="fstatus"><option value="">Active, paused, former</option>${opts(["active","paused","former"],filters.status,STATUSES)}<option value="unsigned"${filters.status==="unsigned"?" selected":""}>Contract not signed (${nUnsigned})</option></select>
+      <select id="fsort" title="Sort">${Object.entries(SORTS).map(([k,l])=>`<option value="${k}"${sort.key===k?" selected":""}>Sort: ${esc(l)}</option>`).join("")}</select>
+      <button class="small" id="fdir" title="Flip direction">${sort.dir===1?"↑ A to Z / oldest first":"↓ Z to A / newest first"}</button>
+      <button class="primary" id="newClient">+ New client</button>
+    </div>
+    <div class="srcstrip">${Object.entries(SERVICE_TYPES).map(([k,v])=>`<span class="tag ${k}">${esc(v.label)} ${counts[k]}</span>`).join("")}<span class="meta" style="margin-left:6px">active clients per service</span></div>
+    <div class="card" style="padding:0 8px;overflow-x:auto">
+    <table><thead><tr>${th("name","Name")}<th>Phone</th>${th("address","Address")}${th("region","Region")}${th("services","Services")}${th("status","Status")}${th("pay","Billing")}${th("last","Last contact")}</tr></thead>
+    <tbody>${rows.map(([id,c])=>`<tr class="click" data-id="${id}">
+      <td><b>${esc(c.name)}</b>${unsignedPill(c)}</td><td style="white-space:nowrap">${tel(c.phone)}</td><td>${esc(c.address||"")}</td><td>${esc(c.region||"")}</td>
+      <td>${tags(c)}</td><td>${statusPill(c.status)}</td><td>${payPill(c)} <span class="meta">${esc(c.payMethod||"")}</span></td><td class="meta">${ago(lastContact(c))}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No clients match.</td></tr>`}
+    </tbody></table></div>`;
+  $("#fq").oninput = e => { filters.q=e.target.value; renderClients(m); const i=$("#fq"); i.focus(); i.setSelectionRange(i.value.length,i.value.length); };
+  $("#fregion").onchange = e => { filters.region=e.target.value; renderClients(m); };
+  $("#fsvc").onchange = e => { filters.svc=e.target.value; renderClients(m); };
+  $("#fstatus").onchange = e => { filters.status=e.target.value; renderClients(m); };
+  $("#newClient").onclick = () => openClient(null, "active");
+  $("#fsort").onchange = e => { sort={key:e.target.value, dir: e.target.value==="first"||e.target.value==="last" ? -1 : 1}; try{ localStorage.setItem("crmSort", JSON.stringify(sort)); }catch(x){} renderClients(m); };
+  $("#fdir").onclick = () => setSort(sort.key);
+  m.querySelectorAll("th.sortable").forEach(h => h.onclick = () => setSort(h.dataset.sort));
+  m.querySelectorAll("tr.click").forEach(tr => tr.onclick = e => { if(e.target.tagName!=="A") openClient(tr.dataset.id); });
+}
+
+// Service tabs: one layout per service line
+function renderService(m, type){
+  const T = SERVICE_TYPES[type];
+  const rows = []; live().forEach(([id,c])=>{ if(c.status==="lost") return; svcList(c).filter(s=>s.type===type).forEach(s=>rows.push({id,c,s})); });
+  const nameCell = r => `<td><b>${esc(r.c.name)}</b>${r.c.status!=="active"?" "+statusPill(r.c.status):""}${unsignedPill(r.c, r.s.sid)}<div class="meta">${tel(r.c.phone)} · ${esc(r.c.address||"")}</div></td>`;
+  const total = rows.reduce((a,r)=>a+(+r.s.price||0),0);
+  let body="";
+  if(type==="lawn"){
+    const on = rows.filter(r=>r.s.season!=="Off"), off = rows.filter(r=>r.s.season==="Off");
+    const byDay = groupBy(on, r=>r.s.day||"No day set");
+    const dayOrder = [...DAYS,"No day set"];
+    body = dayOrder.filter(d=>byDay[d]).map(d=>`<div class="sect">${esc(d)} <span class="n">${byDay[d].length} · ${money(byDay[d].reduce((a,r)=>a+(+r.s.price||0),0))} per round</span></div>
+      <table><thead><tr><th>Client</th><th>Region</th><th>Frequency</th><th class="num">Per cut</th><th>Billing</th></tr></thead><tbody>
+      ${byDay[d].sort((a,b)=>(a.c.region||"").localeCompare(b.c.region||"")||a.c.name.localeCompare(b.c.name)).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${esc(r.c.region||"")}</td><td>${esc(r.s.freq||"")}</td><td class="num">${money(r.s.price)}</td><td>${payPill(r.c)}</td></tr>`).join("")}
+      </tbody></table>`).join("") + (off.length ? `<div class="sect">Off season <span class="n">${off.length}</span></div><table><tbody>${off.sort((a,b)=>a.c.name.localeCompare(b.c.name)).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${esc(r.c.region||"")}</td><td>${esc(r.s.day||"")} ${esc(r.s.freq||"")}</td><td class="num">${money(r.s.price)}</td></tr>`).join("")}</tbody></table>` : "");
+  } else if(type==="fall"){
+    const byR = groupBy(rows, r=>r.s.route||"No route");
+    body = Object.keys(byR).sort().map(g=>`<div class="sect">${esc(g)} <span class="n">${byR[g].length} · ${money(byR[g].reduce((a,r)=>a+(+r.s.price||0),0))}</span></div>
+      <table><thead><tr><th>Client</th><th>Region</th><th>Package</th><th class="num">Price</th><th>Pass 1</th><th>Pass 2</th><th>Billing</th></tr></thead><tbody>
+      ${byR[g].sort((a,b)=>(a.c.region||"").localeCompare(b.c.region||"")||a.c.name.localeCompare(b.c.name)).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${esc(r.c.region||"")}</td><td>${esc(r.s.package||"")}</td><td class="num">${money(r.s.price)}</td>
+        <td><input type="checkbox" data-tick="${r.id}/${r.s.sid}/pass1" ${r.s.pass1?"checked":""}></td><td><input type="checkbox" data-tick="${r.id}/${r.s.sid}/pass2" ${r.s.pass2?"checked":""} ${r.s.package==="One pass"?"disabled":""}></td><td>${payPill(r.c)}</td></tr>`).join("")}
+      </tbody></table>`).join("");
+  } else if(type==="snow"){
+    const byG = groupBy(rows, r=>r.c.region||"No region");
+    const order = [...REGIONS,"No region"].filter(g=>byG[g]);
+    body = order.map(g=>`<div class="sect">${esc(g)} <span class="n">${byG[g].length} accounts · ${money(byG[g].reduce((a,r)=>a+(+r.s.price||0),0))}</span></div>
+      <table><thead><tr><th>Client</th><th>Crew</th><th>Contract</th><th class="num">Seasonal</th><th>Billing</th></tr></thead><tbody>
+      ${byG[g].sort((a,b)=>(a.s.crew||"zz").localeCompare(b.s.crew||"zz")||a.c.name.localeCompare(b.c.name)).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${esc(r.s.crew||"")}</td><td>${r.s.start?fmtDate(r.s.start)+" to "+fmtDate(r.s.end):""}</td><td class="num">${money(r.s.price)}</td><td>${payPill(r.c)}</td></tr>`).join("")}
+      </tbody></table>`).join("");
+  } else if(type==="landscaping"){
+    const byS = groupBy(rows, r=>r.s.jobStatus||"Quoted");
+    body = ["Quoted","Scheduled","Done"].filter(s=>byS[s]).map(s=>`<div class="sect">${s} <span class="n">${byS[s].length} · ${money(byS[s].reduce((a,r)=>a+(+r.s.price||0),0))}</span></div>
+      <table><thead><tr><th>Client</th><th>Job</th><th>Date</th><th class="num">Price</th><th>Billing</th></tr></thead><tbody>
+      ${byS[s].sort((a,b)=>(a.s.date||"9").localeCompare(b.s.date||"9")).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${esc(r.s.desc||"")}</td><td>${fmtDate(r.s.date)}</td><td class="num">${money(r.s.price)}</td><td>${payPill(r.c)}</td></tr>`).join("")}
+      </tbody></table>`).join("");
+  } else if(type==="lights"){
+    const byG = groupBy(rows, r=>r.c.region||"No region");
+    const order = [...REGIONS,"No region"].filter(g=>byG[g]);
+    body = order.map(g=>`<div class="sect">${esc(g)} <span class="n">${byG[g].length} · ${money(byG[g].reduce((a,r)=>a+(+r.s.price||0),0))}</span></div>
+      <table><thead><tr><th>Client</th><th>Install</th><th>Takedown</th><th class="num">Price</th><th>Gutters</th><th>Billing</th></tr></thead><tbody>
+      ${byG[g].sort((a,b)=>(a.s.install||"9").localeCompare(b.s.install||"9")||a.c.name.localeCompare(b.c.name)).map(r=>`<tr class="click" data-id="${r.id}">${nameCell(r)}<td>${fmtDate(r.s.install)}</td><td>${fmtDate(r.s.takedown)}</td><td class="num">${money(r.s.price)}</td><td>${r.s.gutters?"Bundled":""}</td><td>${payPill(r.c)}</td></tr>`).join("")}
+      </tbody></table>`).join("");
+  }
+  m.innerHTML = `<div class="card svcbar ${type}"><div class="row"><h2 style="margin:0"><span class="tag ${type}">${esc(T.label)}</span> ${rows.length} ${rows.length===1?"entry":"entries"}</h2><span class="meta">total ${money(total)}</span></div>
+    ${rows.length ? body : `<div class="empty">No one has a ${esc(T.label)} service yet. Open a client and use + Add service.</div>`}</div>`;
+  m.querySelectorAll("tr.click").forEach(tr => tr.onclick = e => { if(!e.target.matches("input,a")) openClient(tr.dataset.id); });
+  m.querySelectorAll("input[data-tick]").forEach(cb => cb.onchange = () => { const [id,sid,k]=cb.dataset.tick.split("/"); commit(`${clients[id].name}: ${k} ${cb.checked?"done":"not done"}`, { [`clients/${id}/services/${sid}/${k}`]: cb.checked, ...fieldUpdates("clients/"+id, stamp()) }); });
+}
+
+// ---------- client dialog ----------
+let openId=null, draftServices={}, removedServices=new Set();
+function fillSelects(){
+  $("#regionSel").innerHTML = `<option value="">Not set</option>`+opts(REGIONS,"");
+  $("#statusSel").innerHTML = opts(Object.keys(STATUSES),"",STATUSES);
+  $("#sourceSel").innerHTML = `<option value="">Choose</option>`+opts(SOURCES,"");
+  $("#payMethodSel").innerHTML = opts(PAY_METHODS,"",{"":"Not set"});
+  $("#payStatusSel").innerHTML = opts(Object.keys(PAY_STATUSES),"",{...PAY_STATUSES,"":"Not set"});
+  $("#addSvcSel").innerHTML = `<option value="">+ Add service</option>`+Object.entries(SERVICE_TYPES).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join("");
+}
+fillSelects();
+function openClient(id, defaultStatus){
+  openId = id; const c = id ? clients[id] : { status: defaultStatus||"new" };
+  const f=$("#clientForm");
+  f.name.value=c.name||""; f.phone.value=c.phone||""; f.email.value=c.email||""; f.address.value=c.address||""; f.region.value=c.region||""; f.status.value=c.status||"new"; f.source.value=c.source||""; f.interest.value=c.interest||"";
+  f.payMethod.value=c.payMethod||""; f.payStatus.value=c.payStatus||""; f.qbId.value=c.qbId||"";
+  $("#clientTitle").textContent = id ? c.name : "New client";
+  draftServices = JSON.parse(JSON.stringify(c.services||{})); removedServices = new Set();
+  renderStamps(); renderSvcs(); renderLog(); renderContracts(); showDlgDup();
+  $("#clientTrash").hidden = !id; $("#addNote").style.display = id ? "" : "none";
+  if(!$("#clientDlg").open) $("#clientDlg").showModal();
+  f.name.focus();
+}
+function showDlgDup(){ const hit=findByPhone($("#dlgPhone").value, openId); $("#dlgDup").innerHTML = hit ? dupHtml(hit) : ""; wireDup($("#dlgDup")); }
+$("#dlgPhone").oninput = showDlgDup;
+function renderStamps(){
+  const c = openId ? clients[openId] : null; if(!c){ $("#clientStamps").innerHTML=""; return; }
+  $("#clientStamps").innerHTML = `<b>First contact</b><span>${fmtStamp(c.firstContactAt||c.createdAt)}</span><b>Last contact</b><span>${fmtStamp(lastContact(c))} <i class="meta">(${ago(lastContact(c))})</i></span>${c.wonAt?`<b>Won</b><span>${fmtStamp(c.wonAt)}</span>`:""}`;
+}
+function refreshDialogLive(){ if(openId && !clients[openId]) { $("#clientDlg").close(); return; } renderStamps(); renderContracts(); }
+function fieldInput(sid, fld, val){
+  const n=`svc/${sid}/${fld.k}`;
+  if(fld.t==="select") return `<select name="${n}">${opts(fld.o, val ?? fld.o[0])}</select>`;
+  if(fld.t==="check") return `<div style="padding-top:6px"><input type="checkbox" name="${n}" ${val?"checked":""}></div>`;
+  if(fld.t==="money") return `<input name="${n}" type="number" step="0.01" min="0" value="${esc(val ?? "")}" placeholder="$">`;
+  if(fld.t==="date") return `<input name="${n}" type="date" value="${esc(val ?? fld.d ?? "")}">`;
+  return `<input name="${n}" value="${esc(val ?? "")}">`;
+}
+let svcRendering=false;
+function renderSvcs(){
+  // Replacing the list blurs a focused field, which can fire its change handler mid-render. Ignore that re-entry.
+  if(svcRendering) return; svcRendering=true;
+  try { renderSvcsInner(); } finally { svcRendering=false; }
+}
+function renderSvcsInner(){
+  const list = Object.entries(draftServices);
+  $("#svcCount").textContent = list.length ? `(${list.length})` : "";
+  $("#svcList").innerHTML = list.map(([sid,s])=>{ const T=SERVICE_TYPES[s.type]; if(!T) return ""; return `<div class="svc svcbar ${s.type}" data-sid="${sid}">
+    <div class="hd"><span class="tag ${s.type}">${esc(T.label)}</span><span class="sum">${esc(T.summary(s))}</span><button type="button" class="small danger" data-rm="${sid}">Remove</button></div>
+    <div class="fields grid3">${T.fields.map(fld=>`<div${fld.w?` style="grid-column:span ${fld.w}"`:""}><label>${esc(fld.l)}</label>${fieldInput(sid,fld,s[fld.k])}</div>`).join("")}</div>
+  </div>`; }).join("") || `<div class="meta">No services yet.</div>`;
+  $("#svcList").querySelectorAll("[data-rm]").forEach(b=> b.onclick = () => { readSvcForm(); removedServices.add(b.dataset.rm); delete draftServices[b.dataset.rm]; renderSvcs(); renderContracts(); });
+  $("#svcList").querySelectorAll("input,select").forEach(i=> i.onchange = () => { readSvcForm(); renderSvcs(); renderContracts(); });
+}
+function readSvcForm(){
+  const f=$("#clientForm");
+  for(const [sid,s] of Object.entries(draftServices)){
+    const T=SERVICE_TYPES[s.type]; if(!T) continue;
+    T.fields.forEach(fld=>{ const el=f.elements[`svc/${sid}/${fld.k}`]; if(!el) return; s[fld.k] = fld.t==="check" ? !!el.checked : fld.t==="money" ? (el.value===""?"":+el.value) : el.value; });
+  }
+}
+// Contracts section of the client dialog. Works from the saved record so the contract matches what is stored.
+// Unsaved service edits in the dialog. Compared field by field, so an empty field and a missing one count as the same.
+const dialogDirty = () => {
+  if(!openId) return true; readSvcForm(); if(removedServices.size) return true;
+  const saved = clients[openId]?.services||{}; const nv = v => v==null ? "" : String(v);
+  const ids = new Set([...Object.keys(saved), ...Object.keys(draftServices)]);
+  for(const sid of ids){ const a=saved[sid], b=draftServices[sid]; if(!a||!b||a.type!==b.type) return true;
+    for(const fld of (SERVICE_TYPES[b.type]?.fields||[])) if(fld.t==="check" ? !!a[fld.k]!==!!b[fld.k] : nv(a[fld.k])!==nv(b[fld.k])) return true; }
+  return false;
+};
+function renderContracts(){
+  const box=$("#ctrList"); if(!box) return;
+  const c = openId ? clients[openId] : null;
+  if(!c){ $("#ctrCount").textContent=""; box.innerHTML=`<div class="meta">Save the client with its services. The matching contracts appear here, filled in and ready to sign.</div>`; return; }
+  const needs = contractNeeds(c);
+  const mir = Object.entries(c.contracts||{});
+  const shown = new Set(needs.filter(x=>x.signed).map(x=>x.signed[0]));
+  const others = mir.filter(([cid])=>!shown.has(cid)).sort((a,b)=>b[1].signedAt-a[1].signedAt);
+  const dirty = dialogDirty();
+  $("#ctrCount").textContent = needs.length ? `(${needs.filter(x=>x.signed).length} of ${needs.length} signed)` : "";
+  box.innerHTML = (dirty ? `<div class="warnline">Services changed. Save first so the contract shows the right price and dates.</div>` : "") +
+    needs.map(x=>`<div class="ctr"><div class="t"><b>${esc(x.t.name)}</b>${x.t.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">${esc(SERVICE_TYPES[x.s.type].label)}: ${esc(SERVICE_TYPES[x.s.type].summary(x.s))}</div></div>
+      ${x.signed?`<span class="pill signed">Signed ${fmtDate(new Date(x.signed[1].signedAt).toLocaleDateString("en-CA",{timeZone:TZ}))}</span><button type="button" class="small" data-view-ctr="${x.signed[0]}">View</button>`
+               :`<span class="pill unsigned">Not signed</span><button type="button" class="small primary" data-sign="${x.tid}|${x.sid}" ${dirty?"disabled":""}>Open to sign</button>`}</div>`).join("") +
+    others.map(([cid,m])=>`<div class="ctr"><div class="t"><b>${esc(m.name||"Contract")}</b>${m.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">${m.voided?"Voided":"Service since removed or changed"} · signed ${fmtStamp(m.signedAt)}</div></div><span class="pill ${m.voided?"voided":"signed"}">${m.voided?"Voided":"Signed"}</span><button type="button" class="small" data-view-ctr="${cid}">View</button></div>`).join("") +
+    (!needs.length && !others.length ? `<div class="meta">No contract applies to these services. Contracts are set per service in More &gt; Contracts.</div>` : "");
+  box.querySelectorAll("[data-sign]").forEach(b=>b.onclick=()=>{ const [tid,sid]=b.dataset.sign.split("|"); openSigning(openId, tid, sid); });
+  box.querySelectorAll("[data-view-ctr]").forEach(b=>b.onclick=()=>viewContract(openId, b.dataset.viewCtr));
+}
+$("#addSvcSel").onchange = e => {
+  const type=e.target.value; if(!type) return; e.target.value="";
+  readSvcForm();
+  const sid = "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const s={type, createdAt:Date.now()}; SERVICE_TYPES[type].fields.forEach(fld=>{ if(fld.t==="select") s[fld.k]=fld.o[0]; if(fld.d) s[fld.k]=fld.d; if(fld.t==="check") s[fld.k]=false; });
+  draftServices[sid]=s; renderSvcs(); renderContracts();
+  const el=$("#svcList").querySelector(`[data-sid="${sid}"] input,[data-sid="${sid}"] select`); if(el) el.focus();
+};
+function renderLog(){
+  const l = openId ? Object.entries(logs[openId]||{}).sort((a,b)=>b[1].at-a[1].at) : [];
+  $("#logCount").textContent = l.length ? `(${l.length})` : "";
+  $("#logList").innerHTML = l.map(([,e])=>`<div class="e"><div class="when">${fmtStamp(e.at)} · ${esc((e.by||"").split("@")[0])}${e.source&&e.source!=="crm"?` · <span class="pill" style="font-size:11px;padding:0 6px">${esc(e.source)}</span>`:""}</div>${esc(e.text)}</div>`).join("") || `<div class="meta">No notes yet. ${openId?"":"Save the client first, then add notes."}</div>`;
+}
+$("#noteAdd").onclick = async () => {
+  const t=$("#noteText").value.trim(); if(!t || !openId) return;
+  await addNote(openId, t); $("#noteText").value=""; renderLog(); renderStamps();
+};
+$("#noteText").onkeydown = e => { if((e.metaKey||e.ctrlKey) && e.key==="Enter") $("#noteAdd").click(); };
+$("#clientTrash").onclick = async () => { if(!openId) return; await trashClient(openId); $("#clientDlg").close(); };
+$("#clientCancel").onclick = () => $("#clientDlg").close();
+$("#clientForm").onkeydown = e => { if(e.key==="Enter" && e.target.tagName==="INPUT"){ e.preventDefault(); } };
+$("#clientSave").onclick = async () => {
+  const f=$("#clientForm"); readSvcForm();
+  const services = {}; for(const [sid,s] of Object.entries(draftServices)) services[sid]=s;
+  const data = { name:f.name.value.trim(), phone:f.phone.value.trim(), email:f.email.value.trim(), address:f.address.value.trim(), region:f.region.value, status:f.status.value, source:f.source.value, interest:f.interest.value.trim(), payMethod:f.payMethod.value, payStatus:f.payStatus.value, qbId:f.qbId.value.trim() };
+  if(!data.name){ toast("Name is required"); f.name.focus(); return; }
+  if(!data.source){ toast("Pick a lead source"); f.source.focus(); return; }
+  const prev = openId ? clients[openId] : null;
+  const upd = {};
+  if(prev && data.status==="active" && prev.status!=="active" && !prev.wonAt) data.wonAt=Date.now();
+  if(!prev && data.status==="active") data.wonAt=Date.now();
+  const id = openId || db.ref("clients").push().key;
+  Object.assign(upd, fieldUpdates("clients/"+id, {...data, ...stamp(), ...(prev?{}:{createdAt:Date.now(), createdBy:me.email, firstContactAt:Date.now(), lastContactAt:Date.now()})}));
+  Object.assign(upd, phoneUpdates(id, data.phone));
+  for(const [sid,s] of Object.entries(services)) Object.assign(upd, fieldUpdates(`clients/${id}/services/${sid}`, s));
+  removedServices.forEach(sid=> upd[`clients/${id}/services/${sid}`]=null);
+  if(data.status==="active" && (!prev || prev.status!=="active")) Object.assign(upd, qbCustomerRow(id, data));
+  await commit(prev ? "Edited "+data.name : "Added "+data.name, upd);
+  // Stay open when a contract is now waiting, so it can be signed right away.
+  const saved = clients[id];
+  if(saved && contractNeeds(saved).some(x=>!x.signed)){ openClient(id); toast("Saved. The contract is ready to sign below."); }
+  else $("#clientDlg").close();
+};
+$("#clientDlg").onclose = () => { openId=null; };
+
+// ---------- contract text: merge fields, boxes, initials, simple formatting ----------
+function mergeContext(c, s){
+  const ctx = { "client.name":c.name, "client.address":c.address, "client.phone":c.phone, "client.email":c.email, "client.region":c.region,
+    "company.name":COMPANY, "today":fmtLong(today()), "service.type":SERVICE_TYPES[s.type]?.label };
+  for(const fld of (SERVICE_TYPES[s.type]?.fields||[])){
+    const v=s[fld.k];
+    ctx["service."+fld.k] = fld.t==="money" ? money(v) : fld.t==="date" ? fmtLong(v) : fld.t==="check" ? (v?"Yes":"No") : v;
+  }
+  return ctx;
+}
+const mergeText = (body, ctx) => String(body||"").replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_,k)=> (ctx[k]==null||ctx[k]==="") ? "__________" : String(ctx[k]));
+function tokensIn(text){ const checks=[], inits=[]; String(text).replace(/\[\[check:(\w+)\|[^\]]*\]\]/g,(_,k)=>{ checks.push(k); return ""; }).replace(/\[\[initial:(\w+)\]\]/g,(_,k)=>{ inits.push(k); return ""; }); return {checks, inits}; }
+// mode "sign": boxes and initials are live inputs. mode "view": read only, from the saved choices.
+function renderDocHtml(text, mode, choices, initials){
+  choices=choices||{}; initials=initials||{};
+  const ro = mode!=="sign";
+  const inline = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+    .replace(/\[\[check:(\w+)\|([^\]]*)\]\]/g,(_,k,l)=>`<label class="ck"><input type="checkbox" data-ck="${k}" ${choices[k]?"checked":""} ${ro?"disabled":""}><span>${l}</span></label>`)
+    .replace(/\[\[initial:(\w+)\]\]/g,(_,k)=>`<input class="ini" data-ini="${k}" maxlength="4" autocomplete="off" autocapitalize="characters" value="${esc(initials[k]||"")}" ${ro?"readonly":""} aria-label="Client initials">`);
+  return String(text||"").replace(/\r/g,"").split(/\n{2,}/).map(b=>{
+    let lines=b.split("\n").filter(l=>l.trim()!=="" ); if(!lines.length) return "";
+    let head="";
+    const h=/^(#{1,3})\s+(.*)$/.exec(lines[0]); if(h){ const n=h[1].length+1; head=`<h${n}>${inline(h[2])}</h${n}>`; lines=lines.slice(1); if(!lines.length) return head; }
+    if(lines.every(l=>/^\s*[-*]\s+/.test(l))) return head+"<ul>"+lines.map(l=>"<li>"+inline(l.replace(/^\s*[-*]\s+/,""))+"</li>").join("")+"</ul>";
+    if(lines.every(l=>/^\s*\d+[.)]\s+/.test(l))) return head+"<ol>"+lines.map(l=>"<li>"+inline(l.replace(/^\s*\d+[.)]\s+/,""))+"</li>").join("")+"</ol>";
+    if(lines.every(l=>/^\s*\[\[check:/.test(l))) return head+lines.map(inline).join("");
+    return head+"<p>"+lines.map(inline).join("<br>")+"</p>";
+  }).join("");
+}
+
+// ---------- signature pad (finger or Apple Pencil) ----------
+function makePad(canvas){
+  const ctx=canvas.getContext("2d"); let drawing=false, empty=true, last=null;
+  function reset(){
+    const r=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    canvas.width=Math.max(1,Math.round(r.width*dpr)); canvas.height=Math.max(1,Math.round(r.height*dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle="#fff"; ctx.fillRect(0,0,r.width,r.height);
+    ctx.lineWidth=2.6; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#0b1630"; empty=true;
+  }
+  const pt=e=>{ const r=canvas.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+  canvas.addEventListener("pointerdown", e=>{ e.preventDefault(); try{ canvas.setPointerCapture(e.pointerId); }catch(x){} drawing=true; last=pt(e); ctx.beginPath(); ctx.arc(last[0],last[1],1.3,0,Math.PI*2); ctx.fillStyle="#0b1630"; ctx.fill(); empty=false; });
+  canvas.addEventListener("pointermove", e=>{ if(!drawing) return; e.preventDefault(); const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e]; for(const ev of (evs.length?evs:[e])){ const p=pt(ev); ctx.beginPath(); ctx.moveTo(last[0],last[1]); ctx.lineTo(p[0],p[1]); ctx.stroke(); last=p; } empty=false; });
+  const end=()=>{ drawing=false; }; canvas.addEventListener("pointerup",end); canvas.addEventListener("pointercancel",end); canvas.addEventListener("pointerleave",end);
+  reset();
+  return { clear:reset, isEmpty:()=>empty,
+    data(){ const sc=Math.min(1,600/canvas.width); const c2=document.createElement("canvas"); c2.width=Math.round(canvas.width*sc); c2.height=Math.round(canvas.height*sc); const x=c2.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c2.width,c2.height); x.drawImage(canvas,0,0,c2.width,c2.height); return c2.toDataURL("image/png"); } };
+}
+
+// ---------- fingerprint: SHA-256 of the record in a fixed key order ----------
+function canon(v){ if(v===null||typeof v!=="object") return JSON.stringify(v); if(Array.isArray(v)) return "["+v.map(canon).join(",")+"]"; return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}"; }
+async function sha256(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+
+// ---------- signing screen ----------
+let signCtx=null;
+const mySigKey = () => emailKey(me.email);
+async function loadMySig(){ try{ return (await db.ref("adminSigs/"+mySigKey()).once("value")).val(); }catch(e){ return null; } }
+$("#signClose").onclick = () => $("#signDlg").close();
+$("#signDlg").addEventListener("cancel", e => { if(signCtx && signCtx.mode==="sign" && signCtx.pad && !signCtx.pad.isEmpty()){ e.preventDefault(); toast("Use Close to leave without signing"); } });
+$("#signDlg").onclose = () => { signCtx=null; $("#signBody").innerHTML=""; };
+async function openSigning(clientId, tid, sid){
+  const c=clients[clientId], t=templates[tid], s={sid,...(c?.services||{})[sid]};
+  if(!c || !t || !s.type) return toast("That contract is no longer available");
+  if(dialogDirty()) return toast("Save the client first, then open the contract.");
+  const ctx=mergeContext(c,s); const text=mergeText(t.body, ctx);
+  const mySig = await loadMySig();
+  signCtx = { mode:"sign", clientId, tid, sid, text, sample:!!t.sample, mySig };
+  $("#signTitle").textContent = t.name + (t.sample ? " (SAMPLE)" : "");
+  $("#signBody").innerHTML = `
+    <div class="doc" id="docLive">${t.sample?`<div class="samplebar">SAMPLE CONTRACT. For testing only. Do not use with a real client.</div>`:""}${renderDocHtml(text,"sign")}</div>
+    <div class="signpanel">
+      <h4>Payment today</h4>
+      <div class="grid2"><div><label>Payment method</label><select id="sgPayM">${opts(PAY_METHODS, c.payMethod||GOPAY, {"":"Not set"})}</select></div>
+        <div><label>Status</label><select id="sgPayS"><option value="paid">Paid today</option><option value="open">Not paid yet (invoice)</option></select></div></div>
+      <p class="meta" id="sgPayNote" style="margin:6px 0 0"></p>
+    </div>
+    <div class="signpanel">
+      <h4>Client signature</h4>
+      <p class="meta" style="margin:0 0 8px">Sign with a finger or Apple Pencil inside the box.</p>
+      <canvas class="pad" id="padClient"></canvas>
+      <div class="row" style="margin-top:8px"><button type="button" class="small" id="padClientClear">Clear signature</button><span class="meta" style="margin-left:auto">Date: <b>${esc(fmtLong(today()))}</b></span></div>
+      <label>Client printed name</label><input id="sgName" value="${esc(c.name||"")}" autocomplete="off">
+    </div>
+    <div class="signpanel">
+      <h4>Signed for ${esc(COMPANY)}</h4>
+      <div id="sgCompany"></div>
+    </div>
+    <div class="signpanel">
+      ${t.sample?`<label class="row" style="color:var(--ink);font-size:15px;margin:0 0 12px"><input type="checkbox" id="sgSampleOk"> This is a test. I understand the SAMPLE text is not a real contract.</label>`:""}
+      <div class="row"><button type="button" class="primary big" id="sgLock">Sign and lock</button><span class="meta" id="sgStatus"></span></div>
+      <p class="meta" style="margin:8px 0 0">After locking, the contract cannot be edited. A mistake is fixed by voiding it and signing again.</p>
+    </div>`;
+  if(!$("#signDlg").open) $("#signDlg").showModal();
+  $("#signBody").scrollTop=0;
+  signCtx.pad = makePad($("#padClient"));
+  $("#padClientClear").onclick = () => signCtx.pad.clear();
+  const payNote = () => { const m=$("#sgPayM").value, st=$("#sgPayS").value;
+    $("#sgPayNote").textContent = st==="paid" && m===GOPAY ? "Charge the card in GoPayment now. Claude will match that sale in QuickBooks and will not send an invoice."
+      : st==="paid" ? "Recorded as paid. Claude will record the payment in QuickBooks."
+      : "Claude will create the invoice in QuickBooks."; };
+  $("#sgPayM").onchange = payNote; $("#sgPayS").onchange = payNote; payNote();
+  renderCompanySig();
+  $("#sgLock").onclick = lockContract;
+}
+function renderCompanySig(){
+  const box=$("#sgCompany"); const sig=signCtx.mySig;
+  if(sig && sig.data){
+    box.innerHTML = `<img class="sigimg" src="${sig.data}" alt="Company signature"><p class="meta" style="margin:6px 0 0">${esc(sig.name||me.displayName||me.email)}, applied when you lock. <button type="button" class="link" id="sgRedo">Draw a new one</button></p>`;
+    $("#sgRedo").onclick = () => { signCtx.mySig=null; renderCompanySig(); };
+    signCtx.cpad=null;
+  } else {
+    box.innerHTML = `<p class="meta" style="margin:0 0 8px">${esc(me.displayName||me.email)}: draw your signature once. It is saved and applied to every contract you lock from now on.</p><canvas class="pad" id="padCompany" style="height:150px"></canvas><button type="button" class="small" id="padCompanyClear" style="margin-top:8px">Clear</button>`;
+    signCtx.cpad = makePad($("#padCompany")); $("#padCompanyClear").onclick = () => signCtx.cpad.clear();
+  }
+}
+async function lockContract(){
+  const S=signCtx; if(!S || S.busy) return;
+  const c=clients[S.clientId], t=templates[S.tid], s={sid:S.sid,...(c.services||{})[S.sid]};
+  const docEl=$("#docLive");
+  const choices={}; docEl.querySelectorAll("[data-ck]").forEach(i=>choices[i.dataset.ck]=!!i.checked);
+  const initials={}; let missing=null; docEl.querySelectorAll("[data-ini]").forEach(i=>{ const v=i.value.trim().toUpperCase(); initials[i.dataset.ini]=v; if(!v && !missing) missing=i; });
+  if(missing){ missing.scrollIntoView({block:"center"}); missing.focus(); return toast("The client needs to initial every line."); }
+  if(S.pad.isEmpty()){ $("#padClient").scrollIntoView({block:"center"}); return toast("The client has not signed."); }
+  const signerName=$("#sgName").value.trim(); if(!signerName){ $("#sgName").focus(); return toast("Type the client's printed name."); }
+  let companySig = S.mySig?.data || null, saveSig=false;
+  if(!companySig){ if(!S.cpad || S.cpad.isEmpty()){ $("#padCompany").scrollIntoView({block:"center"}); return toast("Draw your company signature once."); } companySig=S.cpad.data(); saveSig=true; }
+  if(S.sample && !$("#sgSampleOk").checked) return toast("Tick the box confirming this is a test.");
+  const payMethod=$("#sgPayM").value, payStatus=$("#sgPayS").value;
+  S.busy=true; $("#sgLock").disabled=true; $("#sgStatus").textContent="Saving…";
+  const now=Date.now();
+  const payload = { v:1, clientId:S.clientId, tpl:S.tid, tplName:t.name, tplVersion:t.version||1, sample:!!t.sample, sid:S.sid, serviceType:s.type,
+    serviceSummary:SERVICE_TYPES[s.type].summary(s), amount: (s.price===""||s.price==null) ? null : +s.price,
+    text:S.text, choices, initials, signerName, signedDate:today(), signedAt:now, signature:S.pad.data(),
+    companySig, companySigner: S.mySig?.name || me.displayName || me.email, witness:me.email, device:navigator.userAgent.slice(0,300), payMethod, payStatus };
+  const hash = await sha256(canon(payload));
+  const cid = db.ref("contracts/"+S.clientId).push().key;
+  const upd = {
+    ["contracts/"+S.clientId+"/"+cid]: { ...payload, status:"signed", hash },
+    ["clients/"+S.clientId+"/contracts/"+cid]: { tpl:S.tid, sid:S.sid, name:t.name, sample:!!t.sample, status:"signed", signedAt:now },
+    ["clients/"+S.clientId+"/payMethod"]: payMethod, ["clients/"+S.clientId+"/payStatus"]: payStatus,
+    ["clients/"+S.clientId+"/lastContactAt"]: now, ["clients/"+S.clientId+"/updatedAt"]: now, ["clients/"+S.clientId+"/updatedBy"]: me.email,
+    ["clientLog/"+S.clientId+"/"+db.ref("clientLog").push().key]: { text:`Signed ${t.name}${t.sample?" (SAMPLE, test only)":""}. ${payStatus==="paid"?"Paid by "+(payMethod||"unrecorded method"):"Not paid at signing"}.`, at:now, by:me.email, source:"contract" }
+  };
+  if(saveSig) upd["adminSigs/"+mySigKey()] = { data:companySig, name:me.displayName||me.email, savedAt:now };
+  if(!t.sample){
+    Object.assign(upd, qbCustomerRow(S.clientId));
+    const rid=db.ref("sync/qb").push().key;
+    upd["sync/qb/"+rid] = payStatus==="paid" && payMethod===GOPAY
+      ? { type:"match-payment", clientId:S.clientId, contractId:cid, amount:payload.amount, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email }
+      : payStatus==="paid"
+      ? { type:"record-payment", clientId:S.clientId, contractId:cid, amount:payload.amount, method:payMethod, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email }
+      : { type:"invoice", clientId:S.clientId, contractId:cid, amount:payload.amount, date:today(), description:`${t.name}: ${payload.serviceSummary}`, status:"pending", createdAt:now, createdBy:me.email };
+  }
+  try {
+    await db.ref().update(upd); // not undoable on purpose: a signed contract is locked by the database rules
+  } catch(e){
+    S.busy=false; $("#sgLock").disabled=false; $("#sgStatus").textContent="";
+    return toast("Not saved. Check the connection and press Sign and lock again. ("+(e.code||e.message)+")");
+  }
+  toast("Signed and locked.");
+  viewContract(S.clientId, cid, { ...payload, status:"signed", hash });
+}
+
+// ---------- viewing a signed contract ----------
+function contractDocHtml(rec){
+  return `${rec.sample?`<div class="samplebar">SAMPLE CONTRACT. Signed as a test only. Not binding.</div>`:""}${rec.voided?`<div class="voidbar">VOIDED ${esc(fmtStamp(rec.voidedAt))}${rec.voidReason?": "+esc(rec.voidReason):""}</div>`:""}
+    ${renderDocHtml(rec.text,"view",rec.choices,rec.initials)}
+    <div class="sigs">
+      <div><img src="${rec.signature}" alt="Client signature"><b>${esc(rec.signerName)}</b><br>Client · ${esc(fmtLong(rec.signedDate))}</div>
+      <div>${rec.companySig?`<img src="${rec.companySig}" alt="Company signature">`:""}<b>${esc(rec.companySigner||"")}</b><br>For ${esc(COMPANY)} · ${esc(fmtLong(rec.signedDate))}</div>
+    </div>
+    <div class="fp">Signed ${esc(fmtStamp(rec.signedAt))} Eastern · witness ${esc(rec.witness)} · template "${esc(rec.tplName)}" version ${esc(rec.tplVersion)}<br>Record fingerprint (SHA-256): ${esc(rec.hash)}</div>`;
+}
+async function viewContract(clientId, cid, recIn){
+  let rec = recIn;
+  if(!rec){ try{ rec=(await db.ref("contracts/"+clientId+"/"+cid).once("value")).val(); }catch(e){ rec=null; } }
+  if(!rec) return toast("Could not load that contract");
+  const c=clients[clientId]||{};
+  signCtx = { mode:"view", clientId, cid, rec };
+  $("#signTitle").textContent = rec.tplName + (rec.sample?" (SAMPLE)":"") + (rec.voided?" (VOIDED)":"");
+  const mail = c.email ? `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent("Your signed "+rec.tplName)}&body=${encodeURIComponent(`Good afternoon ${rec.signerName},\n\nAttached is your signed ${rec.tplName} from ${fmtLong(rec.signedDate)}.\n\nThank you for choosing Mangiapane Brothers.\n\nMangiapane Brothers Lawn and Snow LLC\nReliable Service. Uncompromising Standards.`)}` : "";
+  $("#signBody").innerHTML = `<div class="doc" id="docView">${contractDocHtml(rec)}</div>
+    <div class="signpanel">
+      <div class="row"><button type="button" class="primary" id="cvPrint">Print or save PDF</button>${mail?`<a href="${mail}" class="small" style="text-decoration:none"><button type="button">Email the client</button></a>`:`<span class="meta">No email on file for this client.</span>`}
+      <span style="margin-left:auto"></span>${rec.voided?"":`<button type="button" class="danger" id="cvVoid">Void</button>`}</div>
+      <p class="meta" style="margin:8px 0 0">To give the client a copy: Print or save PDF, then Save to Files, then attach that PDF to the email. ${rec.payStatus==="paid"?`Payment recorded: ${esc(rec.payMethod||"")}.`:"Not paid at signing."}</p>
+      <div id="cvVoidBox" hidden style="margin-top:10px"><label>Reason for voiding (kept with the record)</label><input id="cvVoidReason" placeholder="Wrong price, client changed package..."><div class="actions"><button type="button" id="cvVoidCancel">Keep it</button><button type="button" class="danger" id="cvVoidGo">Void this contract</button></div></div>
+    </div>`;
+  if(!$("#signDlg").open) $("#signDlg").showModal();
+  $("#signBody").scrollTop=0;
+  $("#cvPrint").onclick = () => { $("#printArea").innerHTML = `<div class="doc">${contractDocHtml(rec)}</div>`; window.print(); };
+  if($("#cvVoid")){
+    $("#cvVoid").onclick = () => { $("#cvVoidBox").hidden=false; $("#cvVoidReason").focus(); };
+    $("#cvVoidCancel").onclick = () => { $("#cvVoidBox").hidden=true; };
+    $("#cvVoidGo").onclick = async () => {
+      const reason=$("#cvVoidReason").value.trim(); if(!reason) return toast("Give a reason for voiding.");
+      const now=Date.now();
+      try{
+        await db.ref().update({ [`contracts/${clientId}/${cid}/voided`]:true, [`contracts/${clientId}/${cid}/voidedAt`]:now, [`contracts/${clientId}/${cid}/voidedBy`]:me.email, [`contracts/${clientId}/${cid}/voidReason`]:reason,
+          [`clients/${clientId}/contracts/${cid}/voided`]:true,
+          [`clientLog/${clientId}/${db.ref("clientLog").push().key}`]:{ text:`Voided ${rec.tplName}: ${reason}`, at:now, by:me.email, source:"contract" } });
+        toast("Voided. Open the client to sign a corrected contract.");
+        viewContract(clientId, cid);
+      }catch(e){ toast("Could not void: "+(e.code||e.message)); }
+    };
+  }
+}
+window.addEventListener("afterprint", () => { $("#printArea").innerHTML=""; });
+
+// ---------- Contracts view: templates and your countersignature ----------
+let tplEditing=null;
+function renderContractsView(m){
+  const list=Object.entries(templates).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
+  const signedCount = live().reduce((n,[,c])=>n+Object.values(c.contracts||{}).filter(x=>x.status==="signed"&&!x.voided&&!x.sample).length,0);
+  m.innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Contract templates</h2><button class="primary" id="tplNew">+ New template</button></div>
+    <p class="meta">A template is assigned automatically to every client who has one of its services. The client's name, address, price, and dates fill in when the contract opens. ${signedCount} real contracts signed so far.</p>
+    ${list.some(([,t])=>t.sample&&t.active!==false)?`<div class="warnline">The SAMPLE templates are placeholders. Replace their text with the real contracts before any real client signs. Have a lawyer read the real text once.</div>`:""}
+    <table style="margin-top:8px"><thead><tr><th>Template</th><th>Services</th><th>Version</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.map(([id,t])=>`<tr><td><b>${esc(t.name)}</b>${t.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">updated ${fmtStamp(t.updatedAt)}${t.updatedBy?" by "+esc(t.updatedBy.split("@")[0]):""}</div></td>
+      <td>${Object.keys(t.services||{}).map(k=>`<span class="tag ${k}">${esc(SERVICE_TYPES[k]?.label||k)}</span>`).join(" ")}</td><td>${t.version||1}</td><td>${t.active===false?'<span class="pill paused">Off</span>':'<span class="pill active">Active</span>'}</td>
+      <td class="num"><button class="small" data-tpl="${id}">Edit</button></td></tr>`).join("") || `<tr><td colspan="5" class="empty">No templates yet.</td></tr>`}
+    </tbody></table></div>
+    <div class="card"><h2>Your countersignature</h2><p class="meta">Drawn once and applied to every contract you lock. Each admin keeps his own.</p><div id="mySigBox" class="meta">Loading…</div></div>`;
+  $("#tplNew").onclick = () => openTemplate(null);
+  m.querySelectorAll("[data-tpl]").forEach(b=>b.onclick=()=>openTemplate(b.dataset.tpl));
+  loadMySig().then(sig=>{
+    const box=$("#mySigBox"); if(!box) return;
+    box.innerHTML = (sig&&sig.data ? `<img class="sigimg" src="${sig.data}" alt="Your saved signature"><p class="meta">Saved ${fmtStamp(sig.savedAt)}. Draw below to replace it.</p>` : `<p class="meta">None saved yet. Draw it below, or at the first contract you lock.</p>`) +
+      `<canvas class="pad" id="padMine" style="height:150px;max-width:520px"></canvas><div class="row" style="margin-top:8px"><button class="small" id="padMineClear">Clear</button><button class="small primary" id="padMineSave">Save signature</button></div>`;
+    const p=makePad($("#padMine")); $("#padMineClear").onclick=()=>p.clear();
+    $("#padMineSave").onclick=async()=>{ if(p.isEmpty()) return toast("Draw your signature first"); await db.ref("adminSigs/"+mySigKey()).set({ data:p.data(), name:me.displayName||me.email, savedAt:Date.now() }); toast("Signature saved"); render(); };
+  });
+}
+function openTemplate(id){
+  tplEditing=id; const t = id ? templates[id] : { name:"", services:{}, active:true, sample:false, body:"# New Agreement\n\nThis agreement is between Mangiapane Brothers Lawn and Snow LLC (\"the Company\") and {{client.name}} (\"the Client\").\n\n## Service\nPrice: **{{service.price}}**\n\nClient initials: [[initial:terms]]", version:0 };
+  $("#tplTitle").textContent = id ? "Edit template" : "New template";
+  $("#tplName").value=t.name||""; $("#tplActive").checked=t.active!==false; $("#tplSample").checked=!!t.sample; $("#tplBody").value=t.body||"";
+  $("#tplSvcs").innerHTML = Object.entries(SERVICE_TYPES).map(([k,v])=>`<label class="row" style="margin:0 10px 0 0;color:var(--ink);font-size:14px"><input type="checkbox" data-tsvc="${k}" ${(t.services||{})[k]?"checked":""}> ${esc(v.label)}</label>`).join("");
+  $("#tplVer").textContent = id ? `Version ${t.version||1}` : "";
+  $("#tplPreview").hidden=true; $("#tplPreviewBtn").textContent="Preview"; $("#tplFile").value="";
+  $("#tplDlg").showModal();
+}
+$("#tplFile").onchange = async e => { const f=e.target.files[0]; if(!f) return; $("#tplBody").value = await f.text(); toast("Loaded "+f.name+". Check the fields, then Save."); };
+$("#tplPreviewBtn").onclick = () => {
+  const pv=$("#tplPreview"); if(!pv.hidden){ pv.hidden=true; $("#tplPreviewBtn").textContent="Preview"; return; }
+  const type = Object.keys(SERVICE_TYPES).find(k=>$(`[data-tsvc="${k}"]`).checked) || "fall";
+  const s={type, price:350, package:"Two passes", start:"2026-11-01", end:"2027-03-15", install:"2026-11-20", takedown:"2027-01-10", day:"Tue", freq:"Weekly", desc:"Mulch front beds", date:"2026-10-15"};
+  const c={name:"Jane Sample", address:"12345 Sample St, Livonia", phone:"(734) 555-0100", email:"jane@example.com"};
+  const text=mergeText($("#tplBody").value, mergeContext(c,s)); const tk=tokensIn(text);
+  pv.innerHTML = `<p class="meta">Preview with a made-up client. ${tk.checks.length} boxes, ${tk.inits.length} initial lines.</p><div class="doc">${renderDocHtml(text,"sign")}</div>`;
+  pv.hidden=false; $("#tplPreviewBtn").textContent="Hide preview";
+};
+$("#tplCancel").onclick = () => $("#tplDlg").close();
+$("#tplSave").onclick = async () => {
+  const name=$("#tplName").value.trim(), body=$("#tplBody").value;
+  const services={}; document.querySelectorAll("[data-tsvc]").forEach(i=>{ if(i.checked) services[i.dataset.tsvc]=true; });
+  if(!name) return toast("Give the template a name");
+  if(!Object.keys(services).length) return toast("Pick at least one service it applies to");
+  if(!body.trim()) return toast("The contract text is empty");
+  const id = tplEditing || db.ref("contractTemplates").push().key; const prev = tplEditing ? templates[tplEditing] : null;
+  const version = !prev ? 1 : (prev.body!==body ? (prev.version||1)+1 : (prev.version||1));
+  await commit((prev?"Edited":"Added")+" template "+name, { ["contractTemplates/"+id]: { ...(prev||{}), name, services, active:$("#tplActive").checked, sample:$("#tplSample").checked, body, version, updatedAt:Date.now(), updatedBy:me.email, ...(prev?{}:{createdAt:Date.now()}) } });
+  $("#tplDlg").close();
+};
+cache.contractTemplates = () => templates;
+
+// ---------- import ----------
+const IMPORT_FIELDS = [
+  ["name","Name (required)"],["phone","Phone"],["email","Email"],["address","Address"],["region","Region"],["source","Lead source"],["interest","Summary / interest"],
+  ["payMethod","Payment method"],["payStatus","Payment status (paid/open/past due)"],["qbId","QuickBooks ID"],
+  ["lawn.day","Lawn: day"],["lawn.freq","Lawn: frequency"],["lawn.price","Lawn: price per cut"],
+  ["snow.price","Snow: seasonal price"],["fall.price","Fall cleanup: price"],["notes","First note"] ];
+let csvRows=null, csvHeaders=[];
+function parseCSV(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=ch; }
+    else if(ch==='"') q=true; else if(ch===","){ row.push(cell); cell=""; } else if(ch==="\n"||ch==="\r"){ if(ch==="\r"&&text[i+1]==="\n") i++; row.push(cell); rows.push(row); row=[]; cell=""; } else cell+=ch; }
+  if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+function guessMap(h){ const s=h.toLowerCase().replace(/[^a-z]/g,"");
+  const g = { name:/^(name|client|customer|fullname)/, phone:/phone|cell|mobile|tel/, email:/email/, address:/address|street/, region:/region|neighborhood|area/, source:/source|referr|how/, interest:/interest|summary|service(s)?$/, payMethod:/paymethod|paymentmethod|method/, payStatus:/paystatus|paymentstatus|status$/, qbId:/quickbooks|qb/, "lawn.day":/^day|cutday|mowday|weekday/, "lawn.freq":/freq|weekly|schedule/, "lawn.price":/^price|percut|cutprice|rate|lawnprice/, "snow.price":/snow/, "fall.price":/fall|cleanup/, notes:/note|comment/ };
+  for(const [k,re] of Object.entries(g)) if(re.test(s)) return k; return ""; }
+function renderImport(m){
+  m.innerHTML = `<div class="card"><h2>Import clients from CSV</h2>
+    <p class="meta">Export the Excel sheet as CSV (File &gt; Save As &gt; CSV), then choose it or paste it below. Map each column once, check the preview count, and import. Imported people come in as <b>Active clients</b>; a lawn price or day creates a Lawn service on them. A row whose phone number or exact name is already in the CRM is skipped. Nothing is written until you press Import. Undo works afterward.</p>
+    <div class="row"><input type="file" id="csvFile" accept=".csv,text/csv" style="width:auto"><span class="meta">or paste:</span></div>
+    <textarea id="csvText" placeholder="name,phone,address,region,price,day&#10;Jane Doe,734-555-0100,123 Main St Livonia,Rosedale Gardens,55,Tue" style="margin-top:8px"></textarea>
+    <div class="actions" style="justify-content:flex-start"><button id="csvParse">Read columns</button></div>
+    <div id="csvMap"></div></div>`;
+  $("#csvFile").onchange = e => { const f=e.target.files[0]; if(!f) return; f.text().then(t=>{ $("#csvText").value=t; $("#csvParse").click(); }); };
+  $("#csvParse").onclick = () => {
+    const rows=parseCSV($("#csvText").value); if(rows.length<2) return toast("Need a header row and at least one data row");
+    csvHeaders=rows[0].map(h=>h.trim()); csvRows=rows.slice(1);
+    $("#csvMap").innerHTML = `<div class="sect">Map columns <span class="n">${csvRows.length} rows found</span></div>
+      <div class="maprow">${IMPORT_FIELDS.map(([k,l])=>`<span>${esc(l)}</span><select data-map="${k}"><option value="">(skip)</option>${csvHeaders.map((h,i)=>`<option value="${i}"${guessMap(h)===k?" selected":""}>${esc(h)}</option>`).join("")}</select>`).join("")}</div>
+      <div class="actions"><span class="meta left">Rows with an empty name are skipped. Rows matching a phone number or an exact name already in the CRM are skipped.</span><button class="primary" id="csvGo">Import ${csvRows.length} rows</button></div>`;
+    $("#csvGo").onclick = doImport;
+  };
+}
+async function doImport(){
+  const map={}; document.querySelectorAll("[data-map]").forEach(s=>{ if(s.value!=="") map[s.dataset.map]=+s.value; });
+  if(map.name==null) return toast("Map the Name column first");
+  const existing = new Set(live().map(([,c])=>(c.name||"").toLowerCase().trim()));
+  const phones = new Set(live().map(([,c])=>c.phoneKey||phoneKey(c.phone)).filter(Boolean));
+  const upd={}; let n=0, skipped=0, byPhone=0; const now=Date.now();
+  const get=(r,k)=> map[k]==null ? "" : (r[map[k]]||"").trim();
+  for(const r of csvRows){
+    const name=get(r,"name"); const pk=phoneKey(get(r,"phone"));
+    if(!name){ skipped++; continue; }
+    if(pk && phones.has(pk)){ skipped++; byPhone++; continue; }
+    if(existing.has(name.toLowerCase())){ skipped++; continue; }
+    existing.add(name.toLowerCase()); if(pk) phones.add(pk);
+    const id=db.ref("clients").push().key;
+    const region = REGIONS.find(x=>x.toLowerCase()===get(r,"region").toLowerCase()) || (get(r,"region")?"Other":"");
+    const source = SOURCES.find(x=>x.toLowerCase()===get(r,"source").toLowerCase()) || "Other";
+    const psRaw=get(r,"payStatus").toLowerCase().replace(/\s/g,""); const payStatus = psRaw.startsWith("paid")?"paid": psRaw.startsWith("past")||psRaw.includes("late")?"pastdue": psRaw?"open":"";
+    const c = { name, phone:get(r,"phone"), phoneKey:pk||null, email:get(r,"email"), address:get(r,"address"), region, source, interest:get(r,"interest"), payMethod:get(r,"payMethod"), payStatus, qbId:get(r,"qbId"), status:"active", createdAt:now, createdBy:me.email, firstContactAt:now, lastContactAt:now, wonAt:now, updatedAt:now, updatedBy:me.email, imported:true, services:{} };
+    const price=v=>{ const x=parseFloat(String(v).replace(/[^0-9.]/g,"")); return isNaN(x)?"":x; };
+    if(get(r,"lawn.price")||get(r,"lawn.day")){ const d=get(r,"lawn.day").slice(0,3); const day=DAYS.find(x=>x.toLowerCase()===d.toLowerCase())||""; const fr=/bi/i.test(get(r,"lawn.freq"))?"Biweekly":"Weekly"; c.services["s"+(n+1)+"lawn"]={type:"lawn",day,freq:fr,price:price(get(r,"lawn.price")),season:"On",notes:"",createdAt:now}; }
+    if(get(r,"snow.price")) c.services["s"+(n+1)+"snow"]={type:"snow",price:price(get(r,"snow.price")),crew:"",start:"2026-11-01",end:"2027-03-15",notes:"",createdAt:now};
+    if(get(r,"fall.price")) c.services["s"+(n+1)+"fall"]={type:"fall",package:"Two passes",route:"Route 1",price:price(get(r,"fall.price")),pass1:false,pass2:false,notes:"",createdAt:now};
+    upd["clients/"+id]=c; if(pk) upd["phoneIndex/"+pk]=id;
+    const note=get(r,"notes"); if(note) upd["clientLog/"+id+"/"+db.ref("clientLog/"+id).push().key]={text:note,at:now,by:me.email};
+    n++;
+  }
+  if(!n) return toast("Nothing to import"+(skipped?` (${skipped} skipped)`:""));
+  await commit(`Imported ${n} clients`, upd);
+  toast(`Imported ${n}${skipped?`, skipped ${skipped}${byPhone?` (${byPhone} by phone)`:""}`:""}`); setNav("clients");
+}
+
+// ---------- QuickBooks queue and export ----------
+const QB_LABEL = { customer:"Create or match customer", invoice:"Create invoice", "match-payment":"Match GoPayment sale", "record-payment":"Record payment" };
+function qbExport(){
+  const rows = Object.entries(qbRows).filter(([,r])=>r.status==="pending").sort((a,b)=>a[1].createdAt-b[1].createdAt).map(([rowId,r])=>{
+    const c=clients[r.clientId]||{};
+    return { rowId, type:r.type, amount:r.amount??null, method:r.method||"", date:r.date||"", description:r.description||"", contractId:r.contractId||"",
+      client:{ id:r.clientId, name:c.name||"", phone:c.phone||"", phoneE164:c.phoneKey||phoneKey(c.phone), email:c.email||"", address:c.address||"", quickbooksId:c.qbId||"" } };
+  });
+  return { exportedAt:new Date().toISOString(), company:COMPANY,
+    instructions:[
+      "Work through rows in order with the QuickBooks connector.",
+      "customer: search QuickBooks by phone, then by name. If found, return its id. Create a customer only if none matches. GoPayment may already have created one.",
+      "match-payment: the card was charged in QuickBooks GoPayment at signing. Do NOT create an invoice. Find that day's GoPayment sale for the amount, confirm it sits on the right customer, return its number.",
+      "record-payment: paid at signing by check, cash, or Zelle. Record it against the customer and return the reference.",
+      "invoice: create an invoice for the amount and description, due on receipt, mailed with the ways-to-pay section. Return the invoice number.",
+      "Return JSON in resultFormat so it can be pasted into the CRM. Mark a row error with a note rather than guessing."
+    ],
+    rows,
+    resultFormat:{ results:[{ rowId:"", status:"done or error", quickbooksCustomerId:"", invoiceNumber:"", paymentReference:"", note:"" }] } };
+}
+async function applyQbResults(text){
+  let data; try{ data=JSON.parse(text); }catch(e){ return toast("That is not valid JSON: "+e.message); }
+  const list = Array.isArray(data) ? data : (data.results||[]);
+  const upd={}; let n=0, errs=0; const now=Date.now();
+  for(const r of list){
+    const row=qbRows[r.rowId]; if(!row) continue; n++;
+    const ok = String(r.status||"").toLowerCase()==="done"; if(!ok) errs++;
+    upd["sync/qb/"+r.rowId+"/status"] = ok?"done":"error";
+    upd["sync/qb/"+r.rowId+"/result"] = { quickbooksCustomerId:r.quickbooksCustomerId||"", invoiceNumber:r.invoiceNumber||"", paymentReference:r.paymentReference||"", note:r.note||"" };
+    upd["sync/qb/"+r.rowId+"/doneAt"] = now;
+    if(ok && r.quickbooksCustomerId && clients[row.clientId]) upd["clients/"+row.clientId+"/qbId"] = String(r.quickbooksCustomerId);
+    if(ok && r.invoiceNumber && clients[row.clientId]){ upd["clients/"+row.clientId+"/qbLastInvoice"] = String(r.invoiceNumber); if(!clients[row.clientId].payStatus) upd["clients/"+row.clientId+"/payStatus"]="open"; }
+    if(clients[row.clientId]) upd["clientLog/"+row.clientId+"/"+db.ref("clientLog").push().key] = { text:`QuickBooks: ${QB_LABEL[row.type]||row.type} ${ok?"done":"failed"}${r.invoiceNumber?", invoice "+r.invoiceNumber:""}${r.paymentReference?", ref "+r.paymentReference:""}${r.note?". "+r.note:""}`, at:now, by:me.email, source:"quickbooks" };
+  }
+  if(!n) return toast("None of those rows are in the queue");
+  await commit(`Applied ${n} QuickBooks result${n===1?"":"s"}`, upd);
+  toast(`Applied ${n}${errs?`, ${errs} marked error`:""}`); render();
+}
+function snapshot(){
+  const out = { exportedAt: new Date().toISOString(), clients: [] };
+  live().sort(byName).forEach(([id,c])=>{
+    out.clients.push({ id, name:c.name, phone:c.phone||"", phoneE164:c.phoneKey||phoneKey(c.phone), email:c.email||"", address:c.address||"", region:c.region||"", status:c.status, source:c.source||"", interest:c.interest||"",
+      firstContact: c.firstContactAt?new Date(c.firstContactAt).toISOString():null, lastContact: lastContact(c)?new Date(lastContact(c)).toISOString():null,
+      billing:{ method:c.payMethod||"", status:c.payStatus||"", quickbooksId:c.qbId||"", lastInvoice:c.qbLastInvoice||"" },
+      services: svcList(c).map(({sid,createdAt,...s})=>s),
+      contracts: Object.values(c.contracts||{}).map(x=>({ name:x.name, status:x.voided?"voided":x.status, sample:!!x.sample, signedAt:x.signedAt?new Date(x.signedAt).toISOString():null })),
+      notes: Object.values(logs[id]||{}).sort((a,b)=>a.at-b.at).map(e=>({at:new Date(e.at).toISOString(), by:e.by, text:e.text, source:e.source||"crm"})) });
+  });
+  out.quickbooksQueue = qbExport().rows;
+  return out;
+}
+function download(name, text, type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function renderTools(m){
+  const n=live().length, active=live().filter(([,c])=>c.status==="active").length;
+  const all=Object.entries(qbRows).sort((a,b)=>b[1].createdAt-a[1].createdAt);
+  const pending=all.filter(([,r])=>r.status==="pending"), recent=all.filter(([,r])=>r.status!=="pending").slice(0,15);
+  const rowHtml = ([rid,r]) => `<tr><td>${esc(QB_LABEL[r.type]||r.type)}</td><td>${esc(clients[r.clientId]?.name||"(deleted client)")}</td><td>${esc(r.description||"")}</td><td class="num">${money(r.amount)}</td><td>${r.status==="pending"?'<span class="pill open">waiting</span>':r.status==="done"?'<span class="pill paid">done</span>':'<span class="pill pastdue">error</span>'}${r.result?.note?`<div class="meta">${esc(r.result.note)}</div>`:""}</td><td class="meta">${fmtStamp(r.createdAt)}</td></tr>`;
+  m.innerHTML = `<div class="card">
+    <h2>QuickBooks queue <span class="meta">${pending.length} waiting for Claude</span></h2>
+    <p class="meta">The page adds work here when a client becomes active or a contract is signed. Sample contracts never add work. Copy the queue, paste it into Claude, and ask it to run it with the QuickBooks connector. Paste Claude's answer in the box below to write the QuickBooks numbers back onto the clients.</p>
+    <div class="row" style="margin:8px 0"><button class="primary" id="qbCopy" ${pending.length?"":"disabled"}>Copy queue for Claude</button><button id="qbDl" ${pending.length?"":"disabled"}>Download</button></div>
+    ${pending.length?`<div style="overflow-x:auto"><table><thead><tr><th>Work</th><th>Client</th><th>For</th><th class="num">Amount</th><th>Status</th><th>Queued</th></tr></thead><tbody>${pending.map(rowHtml).join("")}</tbody></table></div>`:`<div class="meta">Nothing waiting.</div>`}
+    <div class="sect">Apply results from Claude</div>
+    <textarea id="qbApply" placeholder='{"results":[{"rowId":"...","status":"done","quickbooksCustomerId":"58","invoiceNumber":"1042"}]}' style="min-height:100px"></textarea>
+    <div class="actions"><button class="primary" id="qbApplyGo">Apply results</button></div>
+    ${recent.length?`<div class="sect">Recently finished</div><div style="overflow-x:auto"><table><tbody>${recent.map(rowHtml).join("")}</tbody></table></div>`:""}
+  </div>
+  <div class="card">
+    <div class="tool"><div><h3>Export for Claude (.json)</h3><p>Every client and lead with services, contracts, billing status, notes, and the QuickBooks queue. ${n} records, ${active} active. Card and bank numbers are never in this file because they are never in this tool.</p></div>
+      <div class="row"><button id="expCopy">Copy</button><button class="primary" id="expDl">Download</button></div></div>
+    <div class="tool"><div><h3>Clients as CSV</h3><p>Name, phone, address, region, status, services, billing. Opens in Excel or Sheets.</p></div><div class="row"><button id="csvDl">Download</button></div></div>
+    <div class="tool"><div><h3>Backup (.json)</h3><p>Raw database copy of clients, notes, templates, and the queue. Signed contracts are backed up separately by Claude. Keep one somewhere safe now and then.</p></div><div class="row"><button id="bakDl">Download</button></div></div>
+  </div>`;
+  $("#qbCopy").onclick = () => navigator.clipboard.writeText(JSON.stringify(qbExport(),null,2)).then(()=>toast("Copied. Paste it into Claude."));
+  $("#qbDl").onclick = () => download(`mb-quickbooks-queue-${today()}.json`, JSON.stringify(qbExport(),null,2), "application/json");
+  $("#qbApplyGo").onclick = () => { const t=$("#qbApply").value.trim(); if(t) applyQbResults(t); };
+  $("#expCopy").onclick = () => navigator.clipboard.writeText(JSON.stringify(snapshot(),null,2)).then(()=>toast("Copied. Paste it into Claude."));
+  $("#expDl").onclick = () => download(`mb-crm-${today()}.json`, JSON.stringify(snapshot(),null,2), "application/json");
+  $("#bakDl").onclick = () => download(`mb-crm-backup-${today()}.json`, JSON.stringify({clients,clientLog:logs,contractTemplates:templates,syncQb:qbRows},null,2), "application/json");
+  $("#csvDl").onclick = () => { const q=v=>`"${String(v??"").replace(/"/g,'""')}"`; const rows=[["Name","Phone","Email","Address","Region","Status","Source","Services","Contracts signed","Payment method","Payment status","QuickBooks ID","First contact","Last contact"]];
+    live().sort(byName).forEach(([,c])=>rows.push([c.name,c.phone,c.email,c.address,c.region,STATUSES[c.status],c.source,svcList(c).map(s=>SERVICE_TYPES[s.type]?.label+(s.price?" "+money(s.price):"")).join("; "),Object.values(c.contracts||{}).filter(x=>x.status==="signed"&&!x.voided).map(x=>x.name).join("; "),c.payMethod,PAY_STATUSES[c.payStatus],c.qbId,fmtStamp(c.firstContactAt),fmtStamp(lastContact(c))]));
+    download(`mb-clients-${today()}.csv`, rows.map(r=>r.map(q).join(",")).join("\n"), "text/csv"); };
+}
+
+// ---------- trash ----------
+function renderTrash(m){
+  const rows = Object.entries(clients).filter(([,c])=>c.deletedAt).sort((a,b)=>b[1].deletedAt-a[1].deletedAt);
+  m.innerHTML = `<div class="card"><h2>Trash</h2><p class="meta">Deleted records stay 30 days, then are removed for good along with their notes. Signed contracts are kept even then.</p>
+    ${rows.map(([id,c])=>`<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1"><b>${esc(c.name)}</b> ${statusPill(c.status)} ${tags(c)}<div class="meta">deleted ${fmtStamp(c.deletedAt)} by ${esc((c.deletedBy||"").split("@")[0])}</div></div><button class="small" data-restore="${id}">Restore</button><button class="small danger" data-purge="${id}">Delete forever</button></div>`).join("") || `<div class="empty">Trash is empty.</div>`}</div>`;
+  m.querySelectorAll("[data-restore]").forEach(b=> b.onclick = () => restoreClient(b.dataset.restore));
+  m.querySelectorAll("[data-purge]").forEach(b=> b.onclick = () => { if(confirm(`Delete ${clients[b.dataset.purge].name} and all notes permanently?`)) purgeClient(b.dataset.purge); });
+}
+
+// ---------- nav ----------
+const SECONDARY = { import:"Import CSV", tools:"QuickBooks and export", trash:"Trash", contracts:"Contracts" };
+function setNav(v){
+  view=v; closeMore();
+  document.querySelectorAll("nav button[data-view]").forEach(x=>x.classList.toggle("on",x.dataset.view===v));
+  const mb=$("#moreBtn"); const sec=SECONDARY[v];
+  mb.innerHTML = (sec||"More") + ' <span class="caret">&#9662;</span>'; mb.classList.toggle("on", !!sec);
+  render();
+}
+document.querySelectorAll("nav button[data-view]").forEach(b => b.onclick = () => setNav(b.dataset.view));
+function closeMore(){ $("#more").classList.remove("open"); $("#moreBtn").setAttribute("aria-expanded","false"); }
+$("#moreBtn").onclick = e => {
+  e.stopPropagation(); const m=$("#more"); const open=!m.classList.contains("open"); const menu=$("#moreMenu");
+  if(open){ const r=$("#moreBtn").getBoundingClientRect(); menu.style.top=(r.bottom+6)+"px"; menu.style.left=Math.min(r.left, window.innerWidth-206)+"px"; }
+  m.classList.toggle("open",open); $("#moreBtn").setAttribute("aria-expanded",String(open));
+};
+document.addEventListener("click", e => { if(!e.target.closest("#more")) closeMore(); });
+document.addEventListener("keydown", e => { if(e.key==="Escape") closeMore(); });
+</script>
+</body>
+</html>

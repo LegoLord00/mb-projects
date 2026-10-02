@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mangiapane Brothers Routes</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{color-scheme:light dark;
+    --bg:#f3f5f8;--card:#ffffff;--surface2:#e9edf2;--line:#d3dae3;
+    --ink:#16233a;--ink2:#4a5a72;--muted:#7a889c;
+    --accent:#1f4e8c;--accent-ink:#ffffff;--accent-soft:#e2ebf7;
+    --green:#1c7a4c;--green-soft:#e1f0e8;--amber:#b0741b;--amber-soft:#fbf1dc;--red:#a63b3b;--red-soft:#f6e3e3;
+    --header:#1f4e8c;--header-ink:#ffffff;--shadow:0 8px 28px rgba(22,35,58,.12);--r:6px}
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1521;--card:#171f2e;--surface2:#1f2a3b;--line:#2c394d;
+    --ink:#e8edf4;--ink2:#b3bfd0;--muted:#7f8ca0;
+    --accent:#6da3e6;--accent-ink:#0f1521;--accent-soft:#1d2d47;
+    --green:#4fbf85;--green-soft:#163326;--amber:#e0a94a;--amber-soft:#3a2d14;--red:#e07a7a;--red-soft:#3a1d1d;
+    --header:#171f2e;--header-ink:#e8edf4;--shadow:0 8px 28px rgba(0,0,0,.45)}}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:var(--header);color:var(--header-ink);padding:10px 14px;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;position:sticky;top:0;z-index:1000}
+  header h1{font-size:17px;margin:0;font-weight:650}
+  header .who{font-size:12px;opacity:.85;margin-left:auto}
+  header .xlinks{display:flex;gap:12px}
+  [hidden]{display:none!important}
+  header a.xlink{color:var(--header-ink);opacity:.8;font-size:13px;text-decoration:none;white-space:nowrap}
+  header a.xlink.here{opacity:1;font-weight:650;text-decoration:underline}
+  nav{display:flex;gap:4px;overflow-x:auto;width:100%;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{background:transparent;border:0;color:var(--header-ink);opacity:.75;padding:6px 10px;border-radius:var(--r);white-space:nowrap}
+  nav button.on{opacity:1;background:rgba(255,255,255,.18);font-weight:600}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 13px;border-radius:var(--r);font-weight:500}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  button.small{padding:5px 9px;font-size:14px}
+  button.ghost{background:transparent;border-color:var(--header-ink);color:var(--header-ink)}
+  button.danger{color:var(--red)}
+  main{max-width:900px;margin:0 auto;padding:12px 12px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 12px}
+  .card h2{font-size:17px;margin:0 0 6px}
+  .card h3{font-size:15px;margin:0 0 4px}
+  .meta{color:var(--ink2);font-size:14px}
+  .muted{color:var(--muted);font-size:13px}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+  .bar .date{font-weight:650;font-size:17px;flex:1;min-width:150px}
+  .routecard{cursor:pointer}
+  .routecard .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .prog{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin:8px 0 4px}
+  .prog i{display:block;height:100%;background:var(--green)}
+  .chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .chip.warn{background:var(--amber-soft);color:var(--amber)}
+  .chip.ok{background:var(--green-soft);color:var(--green)}
+  #mapSlot{height:46vh;min-height:260px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:0 0 10px;position:relative}
+  #mapEl{height:100%;width:100%}
+  .streets{list-style:none;margin:0;padding:0}
+  .streets li{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .streets li .nm{flex:1;min-width:0}
+  .streets li.done .nm b{text-decoration:line-through;color:var(--muted)}
+  .tick{width:38px;height:38px;border-radius:8px;border:2px solid var(--line);background:var(--card);font-size:20px;line-height:1;padding:0;flex:none}
+  li.done .tick{background:var(--green);border-color:var(--green);color:#fff}
+  .iconbtn{padding:6px 9px;font-size:14px;flex:none}
+  label{display:block;font-size:13px;color:var(--ink2);margin:8px 0 3px}
+  input,select,textarea{font:inherit;width:100%;padding:9px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink)}
+  input[type=checkbox]{width:auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--ink2);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  .scroll{overflow-x:auto}
+  dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);padding:16px;width:min(560px,94vw);max-height:90vh;overflow:auto;box-shadow:var(--shadow)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:var(--r);opacity:0;transition:opacity .2s;pointer-events:none;z-index:3000;font-size:14px}
+  #toast.show{opacity:1}
+  .daycol{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 12px}
+  .daycol.today{border-color:var(--accent)}
+  .daycol h3{margin:0 0 6px}
+  .rowlink{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+  img.photo{max-width:100%;border-radius:var(--r)}
+  .demo{background:var(--amber-soft);color:var(--amber);padding:6px 12px;font-size:13px;text-align:center}
+  @media (max-width:520px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="demoBanner" class="demo" hidden>Demo mode. Nothing here is saved.</div>
+<header>
+  <h1>Mangiapane Brothers Routes</h1>
+  <span class="xlinks" id="xlinks" hidden><a class="xlink" href="./index.html">Projects</a><a class="xlink" href="./crm.html">CRM</a><a class="xlink here" href="./routes.html">Routes</a></span>
+  <span class="who" id="who"></span>
+  <button class="ghost small" id="signout" hidden>Sign out</button>
+  <nav id="nav" hidden></nav>
+</header>
+
+<main>
+  <div id="gate" class="card" hidden>
+    <h2>Sign in</h2>
+    <p class="meta">Use the Google account Russel added to the route list.</p>
+    <button class="primary" id="signin">Sign in with Google</button>
+    <p class="meta" id="gateMsg"></p>
+  </div>
+  <div id="app" hidden></div>
+</main>
+
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+// ===== CONFIG (same Firebase project as the Projects page) =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDLndoLTcm8zKyN3WlVfYoGVQmVlbMlib4",
+  authDomain: "mb-projects-c4383.firebaseapp.com",
+  databaseURL: "https://mb-projects-c4383-default-rtdb.firebaseio.com",
+  projectId: "mb-projects-c4383",
+  storageBucket: "mb-projects-c4383.firebasestorage.app",
+  messagingSenderId: "246828597156",
+  appId: "1:246828597156:web:dfa85db16f51d85b5fcb31"
+};
+const ADMIN_EMAIL = "russel.mangiapaneiii@gmail.com";
+const RATE = 0.22;            // dollars per hanger
+const PACE = 80;              // standard doors per hour
+const SEED_URL = "routes-seed.json";
+// Where each clearance tier lands. Walkers and admins use this page; crew go to the Employee View.
+const TIER_HOME = { admin:"index.html", crew:"my.html", walker:"routes.html" };
+// ================================================================
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const emailKey = e => e.toLowerCase().replace(/\./g, ",");
+const TZ = "America/Detroit";
+const today = () => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const pd = d => { const [y,m,dd]=d.split("-").map(Number); return new Date(Date.UTC(y,m-1,dd,12)); };
+const iso = dt => dt.toISOString().slice(0,10);
+const addDays = (d,n) => { const x=pd(d); x.setUTCDate(x.getUTCDate()+n); return iso(x); };
+const mondayOf = d => { const x=pd(d); const w=(x.getUTCDay()+6)%7; return addDays(d,-w); };
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDay = d => { if(!d) return ""; const x=pd(d); return `${DOW[x.getUTCDay()]} ${MON[x.getUTCMonth()]} ${x.getUTCDate()}`; };
+const fmtRange = (a,b) => !a ? "Not scheduled" : (a===b||!b ? fmtDay(a) : `${fmtDay(a)} to ${fmtDay(b)}`);
+const fmtTime = ms => new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit"}).format(new Date(ms));
+const money = n => "$"+(Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),2400); }
+
+// ---------- data layer: Firebase, or an in-memory copy when the URL has ?demo ----------
+const DEMO = new URLSearchParams(location.search).get("demo");
+function fbStore(){
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  return {
+    auth: firebase.auth(),
+    on(path, cb, err){ const r=db.ref(path); r.on("value", s=>cb(s.val()), err||(()=>{})); return ()=>r.off(); },
+    get(path){ return db.ref(path).once("value").then(s=>s.val()); },
+    update(obj){ return db.ref().update(obj); },
+    key(){ return db.ref("routes").push().key; }
+  };
+}
+function demoStore(){
+  const tree = {}; const subs = [];
+  const read = p => p.split("/").reduce((o,k)=> (o && typeof o==="object") ? o[k] : undefined, tree);
+  const write = (p,v) => { const ks=p.split("/"); let o=tree; ks.slice(0,-1).forEach(k=>{ if(typeof o[k]!=="object"||o[k]===null) o[k]={}; o=o[k]; }); const last=ks[ks.length-1]; if(v===null||v===undefined) delete o[last]; else o[last]=JSON.parse(JSON.stringify(v)); };
+  const fire = () => subs.forEach(s=>s.cb(JSON.parse(JSON.stringify(read(s.path) ?? null))));
+  let n=0;
+  return {
+    auth:null,
+    on(path, cb){ const s={path,cb}; subs.push(s); cb(JSON.parse(JSON.stringify(read(path) ?? null))); return ()=>subs.splice(subs.indexOf(s),1); },
+    get(path){ return Promise.resolve(JSON.parse(JSON.stringify(read(path) ?? null))); },
+    update(obj){ Object.entries(obj).forEach(([p,v])=>write(p,v)); fire(); return Promise.resolve(); },
+    key(){ return "d"+Date.now().toString(36)+(n++); }
+  };
+}
+const store = DEMO ? demoStore() : fbStore();
+
+// ---------- state ----------
+let me=null, isAdmin=false;
+let areas={}, routes={}, checks={}, logs={}, walkers={}, supply={};
+let allowedWalkers={}, legacyWalkers={};
+let view="today", curDate=today(), openRoute=null, walkerFilter="";
+let unsub=[];
+
+// ---------- auth ----------
+$("#signin").onclick = async () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  try { await store.auth.signInWithPopup(p); }
+  catch(e){ if(/popup/.test(e.code)) store.auth.signInWithRedirect(p); else $("#gateMsg").textContent = e.message; }
+};
+$("#signout").onclick = () => store.auth && store.auth.signOut();
+
+// Access comes from the one team list (allowed) and its tier. The old walkers list still works during the switch.
+async function enter(user){
+  me = { email:user.email.toLowerCase(), name:user.displayName||user.email, key:emailKey(user.email) };
+  $("#who").textContent = me.email; $("#signout").hidden = !!DEMO;
+  const deny = m => { $("#gate").hidden=false; $("#app").hidden=true; $("#nav").hidden=true; $("#xlinks").hidden=true; $("#gateMsg").textContent = m; };
+  try {
+    const mine = await store.get("allowed/"+me.key).catch(()=>null);
+    const tier = mine?.tier || (me.email===ADMIN_EMAIL.toLowerCase() ? "admin" : "");
+    let legacy = null; if(tier!=="admin" && tier!=="walker") legacy = await store.get("walkers/"+me.key).catch(()=>null);
+    if(tier==="crew"){ location.replace(TIER_HOME.crew); return; }
+    if(tier!=="admin" && tier!=="walker" && !legacy) return deny(`${me.email} is not on the route list. Ask Russel to add it, then sign out and back in.`);
+    isAdmin = tier==="admin";
+    if(mine?.name) me.name = mine.name; else if(legacy?.name) me.name = legacy.name;
+    $("#gate").hidden=true; $("#app").hidden=false; $("#nav").hidden=false; $("#xlinks").hidden=!isAdmin; attach();
+  } catch(e){
+    deny(`${me.email} could not be checked against the route list. Ask Russel.`);
+  }
+}
+function leave(){ me=null; isAdmin=false; unsub.forEach(f=>f()); unsub=[]; $("#who").textContent=""; $("#signout").hidden=true; $("#nav").hidden=true; $("#xlinks").hidden=true; $("#gate").hidden=false; $("#app").hidden=true; }
+function mergeWalkers(){ walkers = {...legacyWalkers}; Object.entries(allowedWalkers).forEach(([k,v])=>{ if(v && v.tier==="walker") walkers[k]={name:v.name, email:v.email}; }); }
+function attach(){
+  unsub.forEach(f=>f()); unsub=[];
+  const bind = (path, set) => unsub.push(store.on(path, v=>{ set(v||{}); render(); }));
+  bind("routeAreas", v=>areas=v); bind("routes", v=>routes=v); bind("routeChecks", v=>checks=v); bind("routeSupply", v=>supply=v);
+  if(isAdmin){
+    bind("routeLogs", v=>logs=v);
+    bind("allowed", v=>{ allowedWalkers=v; mergeWalkers(); });
+    bind("walkers", v=>{ legacyWalkers=v; mergeWalkers(); });
+  } else {
+    // A walker reads only his own reports, from the copy kept under his key.
+    walkers = { [me.key]: { name:me.name, email:me.email } };
+    bind("routeLogsByWalker/"+me.key, v=>{ logs={}; Object.entries(v).forEach(([d,L])=>{ logs[d]={[me.key]:L}; }); });
+  }
+}
+
+// ---------- helpers on the data ----------
+const walkerName = k => !k ? "Unassigned" : (walkers[k]?.name || k.replace(/,/g,"."));
+const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
+function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
+const mineOrAll = r => isAdmin ? (!walkerFilter || r.walker===walkerFilter) : r.walker===me.key;
+const routesOn = d => Object.entries(routes).filter(([,r])=>r.start && r.start<=d && d<=(r.end||r.start) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
+const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return []; } };
+
+// ---------- navigation ----------
+function tabs(){
+  const t = isAdmin ? [["today","Day"],["week","Week"],["schedule","Schedule"],["review","Review"],["setup","Setup"]] : [["today","Today"],["week","Week"],["mylog","My days"]];
+  $("#nav").innerHTML = t.map(([k,l])=>`<button data-v="${k}" class="${view===k&&!openRoute?"on":""}">${l}</button>`).join("");
+  $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
+}
+function dateBar(){
+  const sel = isAdmin ? `<select id="wf" style="width:auto"><option value="">All walkers</option>${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${walkerFilter===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select>` : "";
+  return `<div class="bar"><button class="small" id="prevD" aria-label="Previous">&#8249;</button><span class="date">${view==="week"?"Week of "+fmtDay(mondayOf(curDate)):fmtDay(curDate)}${curDate===today()&&view!=="week"?' <span class="chip">Today</span>':""}</span><button class="small" id="nextD" aria-label="Next">&#8250;</button><button class="small" id="nowD">Today</button>${sel}</div>`;
+}
+function wireDateBar(step){
+  $("#prevD").onclick=()=>{ curDate=addDays(curDate,-step); render(); };
+  $("#nextD").onclick=()=>{ curDate=addDays(curDate,step); render(); };
+  $("#nowD").onclick=()=>{ curDate=today(); render(); };
+  if($("#wf")) $("#wf").onchange=e=>{ walkerFilter=e.target.value; render(); };
+}
+function routeCard(id,r){
+  const p=progress(id), a=areas[r.areaId]||{};
+  return `<div class="card routecard" data-open="${esc(id)}"><div class="top"><h3>${esc(r.name)}</h3><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total} streets</span></div>
+    <div class="meta">${esc(a.name||"")} &middot; ${esc(r.hanger||"")}</div>
+    <div class="meta">${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors &middot; about ${(r.doors/PACE).toFixed(1)} hrs${isAdmin?` &middot; ${esc(walkerName(r.walker))}`:""}</div>
+    <div class="prog"><i style="width:${p.pct}%"></i></div>${r.note?`<div class="muted">${esc(r.note)}</div>`:""}</div>`;
+}
+const wireCards = () => document.querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>{ openRoute=el.dataset.open; render(); window.scrollTo(0,0); });
+
+// ---------- views ----------
+function render(){
+  if(!me) return;
+  tabs();
+  const app=$("#app");
+  if(openRoute && routes[openRoute]) return renderRoute(app);
+  openRoute=null;
+  ({today:renderToday, week:renderWeek, schedule:renderSchedule, review:renderReview, setup:renderSetup, mylog:renderMyLog}[view]||renderToday)(app);
+}
+
+function renderToday(app){
+  const rs=routesOn(curDate);
+  let h = dateBar();
+  h += rs.length ? rs.map(([id,r])=>routeCard(id,r)).join("") : `<div class="card"><p class="meta">No routes on this day${isAdmin&&!Object.keys(routes).length?". Open Setup to load the starting data.":"."}</p></div>`;
+  if(!isAdmin) h += reportForm(curDate);
+  app.innerHTML=h; wireDateBar(1); wireCards(); if(!isAdmin) wireReport(curDate);
+}
+
+function reportForm(d){
+  const L=(logs[d]||{})[me.key]||{};
+  return `<form class="card" id="report"><h2>Day report, ${fmtDay(d)}</h2>
+    <p class="muted">Fill this in at the end of the day. You can change it until Russel closes the week.</p>
+    <div class="grid2"><div><label>Hangers hung today</label><input name="count" type="number" inputmode="numeric" min="0" value="${esc(L.count??"")}" required></div>
+    <div><label>Strava activity link</label><input name="strava" type="url" placeholder="https://www.strava.com/activities/..." value="${esc(L.strava||"")}"></div>
+    <div><label>Start time</label><input name="start" type="time" value="${esc(L.start||"")}" required></div>
+    <div><label>End time</label><input name="end" type="time" value="${esc(L.end||"")}" required></div></div>
+    <label>Notes (skipped houses, problems, a partial route and the last address hung)</label><textarea name="note" rows="2">${esc(L.note||"")}</textarea>
+    <div class="actions">${L.at?`<span class="muted" style="margin-right:auto">Saved ${fmtTime(L.at)}</span>`:""}<button class="primary">Save report</button></div></form>`;
+}
+function wireReport(d){
+  $("#report").onsubmit=async e=>{ e.preventDefault(); const f=e.target;
+    const v={count:Number(f.count.value)||0, strava:f.strava.value.trim(), start:f.start.value, end:f.end.value, note:f.note.value.trim(), at:Date.now(), name:me.name};
+    await store.update({["routeLogs/"+d+"/"+me.key]:v, ["routeLogsByWalker/"+me.key+"/"+d]:v}); toast("Report saved"); };
+}
+
+function renderWeek(app){
+  const mon=mondayOf(curDate); let h=dateBar();
+  for(let i=0;i<6;i++){ const d=addDays(mon,i); const rs=routesOn(d);
+    h+=`<div class="daycol ${d===today()?"today":""}"><h3>${fmtDay(d)}</h3>${rs.length?rs.map(([id,r])=>{ const p=progress(id); return `<div class="rowlink" data-open="${esc(id)}"><span><b>${esc(r.name)}</b> <span class="meta">${esc((areas[r.areaId]||{}).name||"")}${isAdmin?" &middot; "+esc(walkerName(r.walker)):""}</span></span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>`; }).join(""):`<div class="muted">${i===5?"No routes (weather make-up day)":"No routes"}</div>`}</div>`; }
+  if(!isAdmin) h+=weekTotals(me.key, mon);
+  app.innerHTML=h; wireDateBar(7); wireCards();
+}
+function weekNumbers(k, mon){
+  let count=0, mins=0, days=0;
+  for(let i=0;i<7;i++){ const L=(logs[addDays(mon,i)]||{})[k]; if(!L) continue; days++; count+=Number(L.count)||0;
+    if(L.start&&L.end){ const [a,b]=L.start.split(":").map(Number), [c,d]=L.end.split(":").map(Number); mins+=Math.max(0,(c*60+d)-(a*60+b)); } }
+  return {count, hours:mins/60, days, pay:count*RATE};
+}
+function weekTotals(k, mon){
+  const w=weekNumbers(k,mon), s=(supply[mon]||{})[k]||{};
+  return `<div class="card"><h2>Your week</h2><table><tr><td>Hangers reported</td><td><b>${w.count.toLocaleString()}</b></td></tr><tr><td>Hours reported</td><td>${w.hours.toFixed(1)}</td></tr><tr><td>Pace</td><td>${w.hours?Math.round(w.count/w.hours):0} doors an hour</td></tr><tr><td>Pay at ${money(RATE)} a hanger</td><td><b>${money(w.pay)}</b></td></tr>${s.out?`<tr><td>Hangers signed out Monday</td><td>${Number(s.out).toLocaleString()}</td></tr>`:""}</table><p class="muted">Final pay is on the count Russel confirms when the week's hangers are counted back in.</p></div>`;
+}
+function renderMyLog(app){
+  const rows=Object.keys(logs).sort().reverse().filter(d=>logs[d][me.key]).map(d=>{ const L=logs[d][me.key]; return `<tr><td>${fmtDay(d)}</td><td>${Number(L.count||0).toLocaleString()}</td><td>${esc(L.start||"")} to ${esc(L.end||"")}</td><td>${L.strava?`<a href="${esc(L.strava)}" target="_blank" rel="noopener">Strava</a>`:'<span class="chip warn">missing</span>'}</td></tr>`; }).join("");
+  app.innerHTML=`<div class="card"><h2>My days</h2><div class="scroll"><table><tr><th>Day</th><th>Hangers</th><th>Hours</th><th>Recording</th></tr>${rows||'<tr><td colspan="4" class="meta">No reports yet.</td></tr>'}</table></div></div>`+weekTotals(me.key, mondayOf(today()));
+}
+
+// ---------- one route: map and street checklist ----------
+let map=null, mapEl=null, layer=null, meMarker=null, fitFor=null;
+function renderRoute(app){
+  const id=openRoute, r=routes[id], a=areas[r.areaId]||{}, st=streetsOf(r), c=checks[id]||{}, p=progress(id);
+  const canCheck = isAdmin || r.walker===me.key;
+  app.innerHTML=`<div class="bar"><button class="small" id="back">&#8249; Back</button><span class="date">${esc(r.name)}</span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>
+    <div class="meta" style="margin:-6px 0 10px">${esc(a.name||"")} &middot; ${esc(r.hanger||"")} &middot; ${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors${r.note?"<br>"+esc(r.note):""}</div>
+    <div id="mapSlot"></div>
+    <div class="bar"><button class="small" id="locate">Show where I am</button><span class="muted">Green is done. Tap a street on the map or in the list.</span></div>
+    <ul class="streets">${st.map(s=>{ const k=c[s.id]; return `<li class="${k?"done":""}" data-s="${esc(s.id)}"><button class="tick" data-tick="${esc(s.id)}" aria-label="Mark ${esc(s.name)}" ${canCheck?"":"disabled"}>${k?"&#10003;":""}</button>
+      <span class="nm"><b>${esc(s.name)}</b>${k?`<div class="muted">${fmtDay(k.date)} ${fmtTime(k.at)}${isAdmin?" &middot; "+esc(walkerName(k.by)):""}</div>`:""}${parseGeo(s).length?"":'<div class="muted">Not drawn on the map</div>'}</span>
+      ${k&&k.photo?`<button class="iconbtn small" data-view="${esc(s.id)}">Photo</button>`:""}
+      ${canCheck?`<label class="iconbtn small" style="margin:0;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink)">${k&&k.photo?"Retake":"Add photo"}<input type="file" accept="image/*" capture="environment" data-photo="${esc(s.id)}" hidden></label>`:""}
+      <a class="muted" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name+", "+(a.city||"Livonia")+", MI")}">Maps</a></li>`; }).join("")||'<li class="meta">No streets are loaded for this area yet.</li>'}</ul>`;
+  $("#back").onclick=()=>{ openRoute=null; render(); };
+  app.querySelectorAll("[data-tick]").forEach(b=>b.onclick=()=>toggleStreet(id,b.dataset.tick));
+  app.querySelectorAll("[data-photo]").forEach(i=>i.onchange=()=>i.files[0]&&addPhoto(id,i.dataset.photo,i.files[0]));
+  app.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>viewPhoto(id,b.dataset.view));
+  drawMap(id, st, c, canCheck);
+  $("#locate").onclick=locate;
+}
+function drawMap(id, st, c, canCheck){
+  if(typeof L==="undefined"){ $("#mapSlot").innerHTML='<p class="meta" style="padding:12px">The map could not load. The street list below still works.</p>'; return; }
+  if(!mapEl){ mapEl=document.createElement("div"); mapEl.id="mapEl"; }
+  $("#mapSlot").appendChild(mapEl);
+  if(!map){ map=L.map(mapEl,{zoomControl:true}); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map); layer=L.layerGroup().addTo(map); }
+  layer.clearLayers(); const all=[];
+  st.forEach(s=>{ const segs=parseGeo(s); if(!segs.length) return; const done=!!c[s.id];
+    const pl=L.polyline(segs,{color:done?"#1c7a4c":"#c0392b",weight:done?6:5,opacity:done?.9:.75}).addTo(layer);
+    pl.bindTooltip(s.name); if(canCheck) pl.on("click",()=>toggleStreet(id,s.id)); segs.forEach(g=>g.forEach(pt=>all.push(pt))); });
+  map.invalidateSize();
+  if(fitFor!==id && all.length){ map.fitBounds(L.latLngBounds(all),{padding:[14,14]}); fitFor=id; }
+  else if(!all.length && fitFor!==id){ map.setView([42.38,-83.37],12); fitFor=id; }
+}
+function locate(){
+  if(!navigator.geolocation||!map) return toast("Location is not available on this phone");
+  navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; if(meMarker) meMarker.remove(); meMarker=L.circleMarker(ll,{radius:8,color:"#1f4e8c",fillColor:"#1f4e8c",fillOpacity:.9}).addTo(map); map.setView(ll,Math.max(map.getZoom(),17)); }, ()=>toast("Could not get your location"), {enableHighAccuracy:true,timeout:10000});
+}
+async function toggleStreet(rid,sid){
+  const k=(checks[rid]||{})[sid];
+  if(k){ await store.update({["routeChecks/"+rid+"/"+sid]:null, ["routePhotos/"+rid+"/"+sid]:null}); toast("Unchecked"); }
+  else { await store.update({["routeChecks/"+rid+"/"+sid]:{by:me.key, at:Date.now(), date:today()}}); toast("Street done"); }
+}
+function shrinkImage(file){
+  return new Promise((res,rej)=>{ const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{ const sc=Math.min(1,1280/Math.max(img.width,img.height)); const cv=document.createElement("canvas"); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc); cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height); URL.revokeObjectURL(url); res(cv.toDataURL("image/jpeg",.7)); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("That file is not a photo")); }; img.src=url; });
+}
+async function addPhoto(rid,sid,file){
+  try { toast("Uploading photo"); const data=await shrinkImage(file); const now=Date.now(); const k=(checks[rid]||{})[sid];
+    const upd={["routePhotos/"+rid+"/"+sid]:{data, at:now, by:me.key}};
+    if(k) upd["routeChecks/"+rid+"/"+sid+"/photo"]=true; else upd["routeChecks/"+rid+"/"+sid]={by:me.key, at:now, date:today(), photo:true};
+    await store.update(upd); toast("Photo saved"); }
+  catch(e){ toast(e.message||"Photo failed"); }
+}
+async function viewPhoto(rid,sid){
+  const p=await store.get("routePhotos/"+rid+"/"+sid); const s=(areas[routes[rid].areaId]?.streets||{})[sid]||{};
+  openDlg(`<h2>${esc(s.name||"Photo")}</h2>${p?`<img class="photo" src="${p.data}" alt="Street photo"><p class="muted">${fmtDay(iso(new Date(p.at)))} ${fmtTime(p.at)} &middot; ${esc(walkerName(p.by))}</p>`:'<p class="meta">No photo found.</p>'}<div class="actions"><button data-close>Close</button></div>`);
+}
+function openDlg(html){ const d=$("#dlg"); d.innerHTML=html; d.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>d.close()); if(!d.open) d.showModal(); return d; }
+
+// ---------- admin: schedule ----------
+function renderSchedule(app){
+  const list=Object.entries(routes).sort((a,b)=>(a[1].start||"0").localeCompare(b[1].start||"0")||a[1].name.localeCompare(b[1].name));
+  const doors=list.reduce((n,[,r])=>n+(Number(r.doors)||0),0);
+  app.innerHTML=`<div class="bar"><span class="date">Schedule</span><button class="small" id="shiftBtn">Move a campaign</button><button class="primary small" id="addRoute">Add route</button></div>
+    <p class="meta">${list.length} routes, ${doors.toLocaleString()} doors, about ${Math.round(doors/PACE)} hours, ${money(doors*RATE)} in distributor pay. Tap a row to change it.</p>
+    <div class="card scroll"><table><tr><th>Dates</th><th>Route</th><th>Area</th><th>Doors</th><th>Walker</th><th>Done</th></tr>
+    ${list.map(([id,r])=>{ const p=progress(id); return `<tr data-edit="${esc(id)}" style="cursor:pointer"><td>${r.start?fmtRange(r.start,r.end):'<span class="chip warn">Not scheduled</span>'}${r.floating?' <span class="chip warn">floats</span>':""}</td><td><b>${esc(r.name)}</b><div class="muted">${esc(r.hanger||"")}</div></td><td>${esc((areas[r.areaId]||{}).name||"")}</td><td>${Number(r.doors||0).toLocaleString()}</td><td>${r.walker?esc(walkerName(r.walker)):'<span class="chip warn">Unassigned</span>'}</td><td>${p.done}/${p.total}</td></tr>`; }).join("")}</table></div>`;
+  $("#addRoute").onclick=()=>editRoute(null);
+  $("#shiftBtn").onclick=shiftCampaign;
+  app.querySelectorAll("[data-edit]").forEach(tr=>tr.onclick=()=>editRoute(tr.dataset.edit));
+}
+function editRoute(id){
+  const r=id?routes[id]:{name:"",group:"",areaId:Object.keys(areas)[0]||"",hanger:"",start:curDate,end:curDate,walker:"",doors:0,note:""};
+  const d=openDlg(`<form id="rf"><h2>${id?"Edit route":"Add route"}</h2>
+    <label>Route name</label><input name="name" value="${esc(r.name)}" required placeholder="Snow 1 - Sec 8">
+    <div class="grid2"><div><label>Campaign (routes that move together)</label><input name="group" value="${esc(r.group||"")}" placeholder="Snow 1"></div>
+    <div><label>Area</label><select name="areaId">${Object.entries(areas).map(([k,a])=>`<option value="${esc(k)}" ${r.areaId===k?"selected":""}>${esc(a.name)}</option>`).join("")}</select></div>
+    <div><label>First day</label><input name="start" type="date" value="${esc(r.start||"")}"></div><div><label>Last day</label><input name="end" type="date" value="${esc(r.end||"")}"></div>
+    <div><label>Walker</label><select name="walker"><option value="">Unassigned</option>${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${r.walker===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select></div>
+    <div><label>Doors</label><input name="doors" type="number" min="0" value="${esc(r.doors||0)}"></div></div>
+    <label>Hanger</label><input name="hanger" value="${esc(r.hanger||"")}" placeholder="Snow hanger, North version">
+    <label>Note for the walker</label><textarea name="note" rows="2">${esc(r.note||"")}</textarea>
+    <label><input type="checkbox" name="floating" ${r.floating?"checked":""}> Dates float (moves with the weather)</label>
+    <div class="actions">${id?'<button type="button" class="danger" id="delR" style="margin-right:auto">Delete</button>':""}<button type="button" data-close>Cancel</button><button class="primary">Save</button></div></form>`);
+  $("#rf").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const k=id||store.key();
+    const v={name:f.name.value.trim(),group:f.group.value.trim(),areaId:f.areaId.value,start:f.start.value,end:f.end.value||f.start.value,walker:f.walker.value,doors:Number(f.doors.value)||0,hanger:f.hanger.value.trim(),note:f.note.value.trim(),floating:f.floating.checked};
+    await store.update({["routes/"+k]:v}); d.close(); toast("Route saved"); };
+  if(id) $("#delR").onclick=async()=>{ if(!confirm("Delete this route and its check-offs?")) return; await store.update({["routes/"+id]:null,["routeChecks/"+id]:null,["routePhotos/"+id]:null}); d.close(); toast("Route deleted"); };
+}
+function shiftCampaign(){
+  const groups=[...new Set(Object.values(routes).map(r=>r.group).filter(Boolean))].sort();
+  const d=openDlg(`<form id="sf"><h2>Move a campaign</h2><p class="meta">Shifts every route in the campaign by the same number of days. Use it when Snow 3 moves to the first snowfall. Weekends are not skipped, so check the result.</p>
+    <label>Campaign</label><select name="g">${groups.map(g=>`<option>${esc(g)}</option>`).join("")}</select>
+    <label>Days to move (negative moves earlier)</label><input name="n" type="number" value="7" required>
+    <div class="actions"><button type="button" data-close>Cancel</button><button class="primary">Move</button></div></form>`);
+  $("#sf").onsubmit=async e=>{ e.preventDefault(); const g=e.target.g.value, n=Number(e.target.n.value)||0, upd={};
+    Object.entries(routes).forEach(([id,r])=>{ if(r.group===g && r.start){ upd["routes/"+id+"/start"]=addDays(r.start,n); upd["routes/"+id+"/end"]=addDays(r.end||r.start,n); } });
+    await store.update(upd); d.close(); toast(`Moved ${g} by ${n} days`); };
+}
+
+// ---------- admin: review ----------
+function renderReview(app){
+  const mon=mondayOf(curDate); let h=dateBar();
+  const ws=Object.entries(walkers).filter(([k])=>!walkerFilter||k===walkerFilter);
+  h+=ws.map(([k,w])=>{ const L=(logs[curDate]||{})[k];
+    const done=[]; Object.entries(checks).forEach(([rid,cs])=>Object.entries(cs).forEach(([sid,c])=>{ if(c.by===k && c.date===curDate && routes[rid]) done.push({rid,sid,c,name:(areas[routes[rid].areaId]?.streets||{})[sid]?.name||sid}); }));
+    done.sort((a,b)=>a.c.at-b.c.at);
+    return `<div class="card"><h2>${esc(w.name)}</h2>
+      ${L?`<div class="meta"><b>${Number(L.count||0).toLocaleString()}</b> hangers &middot; ${esc(L.start||"?")} to ${esc(L.end||"?")} &middot; ${money((L.count||0)*RATE)} &middot; ${L.strava?`<a href="${esc(L.strava)}" target="_blank" rel="noopener">Open Strava recording</a>`:'<span class="chip warn">No Strava link</span>'}</div>${L.note?`<div class="muted">${esc(L.note)}</div>`:""}`:'<div class="meta"><span class="chip warn">No day report</span></div>'}
+      <div class="meta" style="margin-top:8px">${done.length} streets checked off, ${done.filter(x=>x.c.photo).length} with a photo</div>
+      ${done.length?`<div class="scroll"><table>${done.map(x=>`<tr><td>${fmtTime(x.c.at)}</td><td>${esc(x.name)}<div class="muted">${esc(routes[x.rid].name)}</div></td><td>${x.c.photo?`<button class="small" data-pv="${esc(x.rid)}|${esc(x.sid)}">Photo</button>`:'<span class="chip warn">no photo</span>'}</td></tr>`).join("")}</table></div>`:""}</div>`; }).join("") || `<div class="card"><p class="meta">No walkers yet. Add them in Setup.</p></div>`;
+  h+=`<div class="card"><h2>Week of ${fmtDay(mon)}</h2><p class="muted">Signed out minus returned is the count you pay on. It should match what the walker reported.</p><div class="scroll"><table><tr><th>Walker</th><th>Reported</th><th>Hours</th><th>Pace</th><th>Signed out</th><th>Returned</th><th>Counted</th><th>Pay</th></tr>
+    ${Object.entries(walkers).map(([k,w])=>{ const n=weekNumbers(k,mon), s=(supply[mon]||{})[k]||{}; const counted=(s.out!=null&&s.back!=null&&s.out!==""&&s.back!=="")?Number(s.out)-Number(s.back):null; const off=counted!=null&&counted!==n.count;
+      return `<tr><td>${esc(w.name)}</td><td>${n.count.toLocaleString()}</td><td>${n.hours.toFixed(1)}</td><td>${n.hours?Math.round(n.count/n.hours):0}/hr</td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|out" value="${esc(s.out??"")}"></td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|back" value="${esc(s.back??"")}"></td><td>${counted==null?"":`<span class="chip ${off?"warn":"ok"}">${counted.toLocaleString()}</span>`}</td><td><b>${money((counted??n.count)*RATE)}</b></td></tr>`; }).join("")}</table></div></div>`;
+  app.innerHTML=h; wireDateBar(1);
+  app.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{ const [r,s]=b.dataset.pv.split("|"); viewPhoto(r,s); });
+  app.querySelectorAll("[data-sup]").forEach(i=>i.onchange=()=>{ const [k,f]=i.dataset.sup.split("|"); store.update({["routeSupply/"+mon+"/"+k+"/"+f]: i.value===""?null:Number(i.value)}); });
+}
+
+// ---------- admin: setup ----------
+function renderSetup(app){
+  app.innerHTML=`<div class="card"><h2>Walkers</h2><p class="muted">A walker signs in with the Google account listed here and sees only this page and the routes assigned to him. Walkers are kept on the same team list as everyone else, with the access level Walker. Nobody already on the list as an admin or crew member can be added here.</p>
+    <table>${Object.entries(walkers).map(([k,w])=>`<tr><td><b>${esc(w.name)}</b><div class="muted">${esc(w.email)}</div></td><td style="text-align:right"><button class="small danger" data-rmw="${esc(k)}">Remove</button></td></tr>`).join("")||'<tr><td class="meta">No walkers yet.</td></tr>'}</table>
+    <form id="wform" class="grid2"><div><label>Name</label><input name="name" required></div><div><label>Google email</label><input name="email" type="email" required></div><div class="actions" style="grid-column:1/-1"><button class="primary small">Add walker</button></div></form></div>
+    <div class="card"><h2>Areas and streets</h2><p class="muted">An area's street list is shared by every route in that area. Change it once and every pass follows.</p>
+    <table>${Object.entries(areas).map(([k,a])=>`<tr><td><b>${esc(a.name)}</b><div class="muted">${Object.keys(a.streets||{}).length} streets &middot; ${Number(a.doors||0).toLocaleString()} doors &middot; ${esc(a.city||"")}</div>${a.note?`<div class="muted">${esc(a.note)}</div>`:""}</td><td style="text-align:right"><button class="small" data-area="${esc(k)}">Edit streets</button></td></tr>`).join("")||'<tr><td class="meta">No areas yet.</td></tr>'}</table>
+    <div class="actions"><button class="small" id="addArea">Add area</button></div></div>
+    <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Load starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Starting data loads the areas, their streets, and the 33 scheduled routes. It does not touch walkers, check-offs, photos, or day reports.</p></div>`;
+  $("#wform").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const em=f.email.value.trim().toLowerCase(); const k=emailKey(em);
+    const cur=allowedWalkers[k]; if(cur && cur.tier && cur.tier!=="walker") return toast(`${em} is already on the team list as ${cur.tier}. Change it on the Projects page Team tab.`);
+    await store.update({["allowed/"+k]:{name:f.name.value.trim(),email:em,tier:"walker"}}); toast("Walker added"); };
+  app.querySelectorAll("[data-rmw]").forEach(b=>b.onclick=async()=>{ if(!confirm("Remove this walker? His reports stay on file.")) return; const k=b.dataset.rmw; const upd={}; if(allowedWalkers[k]?.tier==="walker") upd["allowed/"+k]=null; if(legacyWalkers[k]) upd["walkers/"+k]=null; await store.update(upd); });
+  app.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>editArea(b.dataset.area));
+  $("#addArea").onclick=async()=>{ const k=store.key(); await store.update({["routeAreas/"+k]:{name:"New area",city:"Livonia",doors:0}}); editArea(k); };
+  $("#seed").onclick=loadSeed; $("#backup").onclick=backup;
+}
+function editArea(k){
+  const a=areas[k]||{name:"New area",city:"Livonia",doors:0}; const st=Object.entries(a.streets||{}).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name));
+  const d=openDlg(`<form id="af"><h2>Edit area</h2>
+    <div class="grid2"><div><label>Area name</label><input name="name" value="${esc(a.name)}" required></div><div><label>City</label><input name="city" value="${esc(a.city||"")}"></div><div><label>Doors per pass</label><input name="doors" type="number" min="0" value="${esc(a.doors||0)}"></div></div>
+    <label>Streets (number sets the walking order; tick to remove)</label>
+    <div class="scroll" style="max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:var(--r)"><table>${st.map(s=>`<tr><td style="width:30px"><input type="checkbox" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.name)}"></td><td style="width:74px"><input type="number" data-ord="${esc(s.id)}" value="${esc(s.order??"")}"></td><td><input data-nm="${esc(s.id)}" value="${esc(s.name)}"></td><td class="muted" style="white-space:nowrap">${parseGeo(s).length?"on map":"no line"}</td></tr>`).join("")||'<tr><td class="meta">No streets yet.</td></tr>'}</table></div>
+    <label>Add streets (one per line)</label><textarea name="add" rows="3" placeholder="Hawthorn Street"></textarea>
+    <label><input type="checkbox" name="find" checked> Look up new streets on the map</label>
+    <div class="actions"><button type="button" class="danger" id="delA" style="margin-right:auto">Delete area</button><button type="button" data-close>Cancel</button><button class="primary">Save</button></div></form>`);
+  $("#af").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const upd={["routeAreas/"+k+"/name"]:f.name.value.trim(),["routeAreas/"+k+"/city"]:f.city.value.trim(),["routeAreas/"+k+"/doors"]:Number(f.doors.value)||0};
+    f.querySelectorAll("[data-nm]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.nm+"/name"]=i.value.trim());
+    f.querySelectorAll("[data-ord]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.ord+"/order"]=i.value===""?null:Number(i.value));
+    f.querySelectorAll("[data-del]:checked").forEach(i=>{ Object.keys(upd).forEach(p=>{ if(p.startsWith("routeAreas/"+k+"/streets/"+i.dataset.del+"/")) delete upd[p]; }); upd["routeAreas/"+k+"/streets/"+i.dataset.del]=null; });
+    const add=f.add.value.split("\n").map(s=>s.trim()).filter(Boolean); let n=st.length?Math.max(...st.map(s=>s.order||0)):0;
+    for(const name of add){ const sid=store.key(); let geo="[]"; if(f.find.checked){ toast("Looking up "+name); geo=await findStreet(name,a); } upd["routeAreas/"+k+"/streets/"+sid]={name,order:++n,geo}; }
+    await store.update(upd); d.close(); toast("Area saved"); };
+  $("#delA").onclick=async()=>{ const used=Object.values(routes).filter(r=>r.areaId===k).length; if(used) return toast(`${used} routes still use this area`); if(!confirm("Delete this area?")) return; await store.update({["routeAreas/"+k]:null}); d.close(); };
+}
+// Looks a street up in OpenStreetMap inside the area's box and returns its line.
+async function findStreet(name, a){
+  try { let b=a.bbox; if(!b){ const pts=[]; Object.values(a.streets||{}).forEach(s=>parseGeo(s).forEach(g=>g.forEach(p=>pts.push(p)))); if(!pts.length) return "[]"; const la=pts.map(p=>p[0]), lo=pts.map(p=>p[1]); b=[Math.min(...la)-.003,Math.min(...lo)-.004,Math.max(...la)+.003,Math.max(...lo)+.004]; }
+    const core=name.replace(/^(N|S|E|W|North|South|East|West)\.?\s+/i,"").replace(/\s+(St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ct|Court|Ln|Lane|Blvd|Boulevard|Cir|Circle|Trl|Trail|Pl|Place)\.?$/i,"").replace(/["\\]/g,"");
+    const q=`[out:json][timeout:25];way[highway][name~"${core}",i](${b.join(",")});out geom;`;
+    const r=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+    const j=await r.json(); const segs=(j.elements||[]).map(w=>(w.geometry||[]).map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)])).filter(g=>g.length>1);
+    return JSON.stringify(segs);
+  } catch(e){ return "[]"; }
+}
+async function loadSeed(){
+  if(Object.keys(routes).length && !confirm("Routes already exist. Loading starting data replaces the areas and the routes with the same ids, including any edits to them. Continue?")) return;
+  try { const s=await (await fetch(SEED_URL,{cache:"no-store"})).json(); const upd={};
+    Object.entries(s.areas||{}).forEach(([k,v])=>upd["routeAreas/"+k]=v); Object.entries(s.routes||{}).forEach(([k,v])=>upd["routes/"+k]=v);
+    await store.update(upd); toast(`Loaded ${Object.keys(s.areas||{}).length} areas and ${Object.keys(s.routes||{}).length} routes`); }
+  catch(e){ toast("Could not load "+SEED_URL); }
+}
+function backup(){
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),areas,routes,checks,logs,walkers,supply,note:"Photos are not included."},null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="mb-routes-backup-"+today()+".json"; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ---------- start ----------
+if(DEMO){
+  $("#demoBanner").hidden=false;
+  fetch(SEED_URL).then(r=>r.json()).catch(()=>({areas:{},routes:{}})).then(async s=>{
+    const upd={"allowed/walker,one@example,com":{name:"Walker One",email:"walker.one@example.com",tier:"walker"},"allowed/walker,two@example,com":{name:"Walker Two",email:"walker.two@example.com",tier:"walker"},
+      ["allowed/"+emailKey(ADMIN_EMAIL)]:{name:"Russel",email:ADMIN_EMAIL,tier:"admin"}};
+    Object.entries(s.areas||{}).forEach(([k,v])=>upd["routeAreas/"+k]=v);
+    Object.entries(s.routes||{}).forEach(([k,v],i)=>upd["routes/"+k]={...v,walker:i%2?"walker,two@example,com":"walker,one@example,com"});
+    await store.update(upd);
+    const first=Object.values(s.routes||{}).map(r=>r.start).filter(Boolean).sort()[0]; if(first && first>curDate) curDate=first;
+    enter(DEMO==="walker" ? {email:"walker.one@example.com",displayName:"Walker One"} : {email:ADMIN_EMAIL,displayName:"Russel"});
+  });
+} else {
+  store.auth.onAuthStateChanged(u => u ? enter(u) : leave());
+}
+</script>
+</body>
+</html>
