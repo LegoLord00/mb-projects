@@ -28,7 +28,8 @@
   header{background:var(--header);color:var(--header-ink);padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
   header .right{display:flex;gap:8px;align-items:center;margin-left:auto}
   header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
-  header .tag{font-size:12px;opacity:.85}
+  @media(max-width:700px){header .brand{flex:1 1 200px;min-width:0}}
+  header .brand .tag{font-size:12px;opacity:.85;white-space:normal;padding:0;border:0;background:none;color:inherit;font-weight:400;display:block;line-height:1.3}
   header .spacer{flex:1}
   header .who{font-size:13px;opacity:.9}
   header a.xlink{color:var(--header-ink);opacity:.8;font-size:13px;text-decoration:none;white-space:nowrap}
@@ -174,11 +175,29 @@
   .filters select{width:auto}
   code{background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:13px}
   pre{background:var(--surface2);padding:10px;border-radius:var(--r);overflow:auto;font-size:12px}
+
+  /* page menu: three-line button left of the company name, drawer from the left edge */
+  .navbtn{flex:none;width:40px;height:40px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--header-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .navbtn:hover{background:rgba(255,255,255,.14)}
+  .navbtn svg{width:24px;height:24px;display:block}
+  .pgdrawer-bg{position:fixed;inset:0;background:rgba(10,16,28,.45);z-index:2000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .pgdrawer-bg.open{opacity:1;pointer-events:auto}
+  .pgdrawer{position:fixed;top:0;left:0;bottom:0;width:min(290px,84vw);background:var(--card);color:var(--ink);z-index:2001;box-shadow:var(--shadow);transform:translateX(-102%);transition:transform .22s;display:flex;flex-direction:column;padding:14px 12px;touch-action:pan-y}
+  .pgdrawer.open{transform:none}
+  .pgdrawer .pdhead{display:flex;align-items:center;gap:8px;padding:0 4px 12px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .pgdrawer .pdhead b{flex:1;font-size:15px}
+  .pgdrawer .pdx{width:36px;height:36px;border-radius:50%;border:0;background:var(--surface2);color:var(--ink);font-size:22px;line-height:1;padding:0;cursor:pointer}
+  .pgdrawer a{display:block;padding:11px 12px;border-radius:8px;color:var(--ink);text-decoration:none;margin:2px 0}
+  .pgdrawer a span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+  .pgdrawer a:hover{background:var(--surface2)}
+  .pgdrawer a.here{background:var(--accent-soft);color:var(--accent);font-weight:650}
+  .pgdrawer .pdfoot{margin-top:auto;font-size:12px;color:var(--muted);padding:8px 4px 0}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Mangiapane Brothers Projects</h1><div class="tag">Reliable Service. Uncompromising Standards.</div></div>
+  <button type="button" class="navbtn" id="navBtn" aria-label="Open page menu" aria-controls="pgDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <div class="brand"><h1>Mangiapane Brothers Projects</h1><div class="tag">Full-Service Property Maintenance for Those Who Take Pride in Their Home</div></div>
   <nav id="nav" hidden>
     <button data-view="board" class="on">Projects</button>
     <button data-view="person">By person</button>
@@ -196,9 +215,6 @@
     </div>
   </nav>
   <div class="right">
-    <a class="xlink here" href="./index.html">Projects</a>
-    <a class="xlink" href="./crm.html">CRM</a>
-    <a class="xlink" href="./routes.html">Routes</a>
     <div class="who" id="who"></div>
     <button class="ghost small" id="undoBtn" hidden>Undo</button>
     <button class="ghost small" id="signout" hidden>Sign out</button>
@@ -1069,6 +1085,23 @@ function openTask(id,pid){
 $("#taskCancel").onclick=()=>$("#taskDlg").close();
 $("#taskDelete").onclick=async()=>{ $("#taskDlg").close(); await trashTask(editingTask); };
 $("#taskForm").onsubmit=async e=>{ const f=e.target; const data={title:f.title.value.trim(),assignee:f.assignee.value,status:f.status.value,due:f.due.value,notes:f.notes.value.trim(),essential:f.essential.checked,event:f.event.checked,projectId:f.projectId.value||taskProject}; await saveTask(editingTask,data); };
+</script>
+<div class="pgdrawer-bg" id="pgDrawerBg"></div>
+<nav class="pgdrawer" id="pgDrawer" aria-label="Pages" aria-hidden="true">
+  <div class="pdhead"><b>Mangiapane Brothers</b><button type="button" class="pdx" id="pgDrawerX" aria-label="Close page menu">&times;</button></div>
+  <a href="./index.html" class="here" aria-current="page">Projects<span>Admin task dashboard</span></a><a href="./crm.html">CRM<span>Leads, clients, contracts</span></a><a href="./routes.html">Routes<span>Door hanger routes</span></a>
+  <div class="pdfoot">Full-Service Property Maintenance for Those Who Take Pride in Their Home</div>
+</nav>
+<script>
+// Page menu: opens from the three-line button, closes with the X, a tap outside, Escape, or a swipe left.
+(function(){
+  const btn=document.getElementById("navBtn"), d=document.getElementById("pgDrawer"), bg=document.getElementById("pgDrawerBg"), x=document.getElementById("pgDrawerX");
+  const set=open=>{ d.classList.toggle("open",open); bg.classList.toggle("open",open); d.setAttribute("aria-hidden",String(!open)); btn.setAttribute("aria-expanded",String(open)); if(open) x.focus(); };
+  btn.onclick=()=>set(!d.classList.contains("open")); x.onclick=()=>set(false); bg.onclick=()=>set(false);
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && d.classList.contains("open")) set(false); });
+  let x0=null; d.addEventListener("pointerdown",e=>{ x0=e.clientX; }); d.addEventListener("pointerup",e=>{ if(x0!=null && x0-e.clientX>60) set(false); x0=null; });
+  window.__pageMenu={open:()=>set(true),close:()=>set(false)};
+})();
 </script>
 </body>
 </html>
