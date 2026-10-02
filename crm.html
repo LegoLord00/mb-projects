@@ -43,7 +43,8 @@
   header{background:var(--header);color:var(--header-ink);padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
   header .right{display:flex;gap:8px 12px;align-items:center;margin-left:auto;flex-wrap:wrap}
   header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
-  header .tag{font-size:12px;opacity:.85}
+  @media(max-width:700px){header .brand{flex:1 1 200px;min-width:0}}
+  header .brand .tag{font-size:12px;opacity:.85;white-space:normal;padding:0;border:0;background:none;color:inherit;font-weight:400;display:block;line-height:1.3}
   header .who{font-size:13px;opacity:.9}
   header a.xlink{color:var(--header-ink);opacity:.8;font-size:13px;text-decoration:none;white-space:nowrap}
   header a.xlink:hover{opacity:1;text-decoration:underline}
@@ -146,6 +147,12 @@
   .col h2 .n{margin-left:auto;font-weight:500;color:var(--muted)}
   .col.drop{box-shadow:inset 0 0 0 2px var(--accent)}
   .col.won{background:var(--green-soft)} .col.lost{background:var(--red-soft)}
+  .col h2{cursor:pointer;user-select:none;gap:6px} .col h2 .fold{font-size:11px;color:var(--muted);width:12px}
+  .col.shut{padding:10px 4px;align-items:center;min-height:300px}
+  .col.shut h2{writing-mode:vertical-rl;transform:rotate(180deg);flex-direction:row-reverse;margin:0;white-space:nowrap}
+  .col.shut h2 .n{margin-left:0;margin-top:auto}
+  .col.shut h2 .fold{transform:rotate(90deg)}
+  @media(max-width:700px){.board{grid-template-columns:1fr!important}.col.shut{min-height:0;padding:10px;align-items:stretch}.col.shut h2{writing-mode:horizontal-tb;transform:none;flex-direction:row}.col.shut h2 .fold{transform:none}.col.shut h2 .n{margin-left:auto}}
   .lead{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;cursor:grab;user-select:none}
   .lead:active{cursor:grabbing} .lead.dragging{opacity:.4}
   .lead .name{font-weight:600}
@@ -212,7 +219,7 @@
   .pstotal{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin-top:10px;font-size:15px} .pstotal b{font-size:24px}
   .payopt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
   .payopt.nofee{border-color:var(--green);background:var(--green-soft)}
-  .payopt .ph{display:flex;justify-content:space-between;gap:10px;font-size:16px} .payopt .amt{font-weight:700}
+  .payopt .ph{display:flex;justify-content:space-between;gap:10px;font-size:16px} .payopt .amt{font-weight:700;text-align:right} .payopt .amt small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .payopt .pb{font-size:14px;color:var(--ink2);margin-top:3px} .payopt .pf{font-size:12px;color:var(--amber);margin-top:4px} .payopt .pf.ok{color:var(--green)}
   .psadmin{margin-top:18px;padding-top:12px;border-top:1px dashed var(--line)}
   #printArea{display:none}
@@ -222,19 +229,37 @@
     #printArea .doc{border:0;padding:0;max-width:none}
     @page{margin:16mm}
   }
+
+  /* page menu: three-line button left of the company name, drawer from the left edge */
+  .navbtn{flex:none;width:40px;height:40px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--header-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .navbtn:hover{background:rgba(255,255,255,.14)}
+  .navbtn svg{width:24px;height:24px;display:block}
+  .pgdrawer-bg{position:fixed;inset:0;background:rgba(10,16,28,.45);z-index:2000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .pgdrawer-bg.open{opacity:1;pointer-events:auto}
+  .pgdrawer{position:fixed;top:0;left:0;bottom:0;width:min(290px,84vw);background:var(--card);color:var(--ink);z-index:2001;box-shadow:var(--shadow);transform:translateX(-102%);transition:transform .22s;display:flex;flex-direction:column;padding:14px 12px;touch-action:pan-y}
+  .pgdrawer.open{transform:none}
+  .pgdrawer .pdhead{display:flex;align-items:center;gap:8px;padding:0 4px 12px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .pgdrawer .pdhead b{flex:1;font-size:15px}
+  .pgdrawer .pdx{width:36px;height:36px;border-radius:50%;border:0;background:var(--surface2);color:var(--ink);font-size:22px;line-height:1;padding:0;cursor:pointer}
+  .pgdrawer a{display:block;padding:11px 12px;border-radius:8px;color:var(--ink);text-decoration:none;margin:2px 0}
+  .pgdrawer a span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+  .pgdrawer a:hover{background:var(--surface2)}
+  .pgdrawer a.here{background:var(--accent-soft);color:var(--accent);font-weight:650}
+  .pgdrawer .pdfoot{margin-top:auto;font-size:12px;color:var(--muted);padding:8px 4px 0}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Mangiapane Brothers CRM</h1><div class="tag">Reliable Service. Uncompromising Standards.</div></div>
+  <button type="button" class="navbtn" id="navBtn" aria-label="Open page menu" aria-controls="pgDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <div class="brand"><h1>Mangiapane Brothers CRM</h1><div class="tag">Full-Service Property Maintenance for Those Who Take Pride in Their Home</div></div>
   <nav id="nav" hidden>
     <button data-view="leads" class="on">Leads</button>
     <button data-view="clients">Clients</button>
     <button data-view="svc-lawn"><span class="dot" style="background:var(--s-lawn)"></span>Lawn</button>
     <button data-view="svc-fall"><span class="dot" style="background:var(--s-fall)"></span>Fall</button>
+    <button data-view="svc-lights"><span class="dot" style="background:var(--s-lights)"></span>Lights</button>
     <button data-view="svc-snow"><span class="dot" style="background:#9ec3f0"></span>Snow</button>
     <button data-view="svc-landscaping"><span class="dot" style="background:var(--s-landscaping)"></span>Landscaping</button>
-    <button data-view="svc-lights"><span class="dot" style="background:var(--s-lights)"></span>Lights</button>
     <div class="more" id="more">
       <button id="moreBtn" aria-haspopup="menu" aria-expanded="false">More <span class="caret">&#9662;</span></button>
       <div class="menu" id="moreMenu" role="menu">
@@ -246,9 +271,6 @@
     </div>
   </nav>
   <div class="right">
-    <a class="xlink" href="./index.html">Projects</a>
-    <a class="xlink here" href="./crm.html">CRM</a>
-    <a class="xlink" href="./routes.html">Routes</a>
     <div class="who" id="who"></div>
     <button class="ghost small" id="undoBtn" hidden>Undo</button>
     <button class="ghost small" id="signout" hidden>Sign out</button>
@@ -291,12 +313,7 @@
     <div class="sect">Contracts <span class="n" id="ctrCount"></span></div>
     <div id="ctrList"></div>
 
-    <div class="sect">Billing <span class="n">(status only; QuickBooks holds the ledger)</span></div>
-    <div class="grid3">
-      <div><label>Payment method</label><select name="payMethod" id="payMethodSel"></select></div>
-      <div><label>Payment status</label><select name="payStatus" id="payStatusSel"></select></div>
-      <div><label>QuickBooks customer ID</label><input name="qbId" placeholder="filled in by Claude"></div>
-    </div>
+    <div class="meta" id="billSummary" style="margin-top:10px"></div>
 
     <div class="sect">Contact log <span class="n" id="logCount"></span></div>
     <div class="log" id="logList"></div>
@@ -739,7 +756,10 @@ function render(){
 }
 
 // Leads board
-let quickDupAck=null;
+let quickDupAck=null, quickBusy=false;
+// Lead board columns folded by the user, remembered per browser.
+let collapsedCols = new Set(); try{ collapsedCols = new Set(JSON.parse(localStorage.getItem("crmFoldedCols")||"[]")); }catch(e){}
+function toggleCol(k){ collapsedCols.has(k) ? collapsedCols.delete(k) : collapsedCols.add(k); try{ localStorage.setItem("crmFoldedCols", JSON.stringify([...collapsedCols])); }catch(e){} render(); }
 function renderLeads(m){
   const leads = live().filter(([,c])=>LEAD_STAGES.includes(c.status));
   const won = live().filter(([,c])=>c.status==="active" && c.wonAt && Date.now()-c.wonAt < 30*864e5);
@@ -776,11 +796,12 @@ function renderLeads(m){
       <div class="meta" style="margin-top:6px">Type while on the call. A number already in the CRM is flagged as you type. First contact is stamped when you press Add. Open a card to log notes. Drag cards between columns, or use the dropdown on a phone.</div>
     </div>
     <div class="srcstrip">${SOURCES.map(s=>`<span class="pill">${esc(s)} <b>${(src[s]||[]).length}</b></span>`).join("")}</div>
-    <div class="board">${cols.map(col=>`
-      <div class="col ${col.cls||""}" data-col="${col.key}"><h2>${esc(col.label)}<span class="n">${col.items.length}</span></h2>
-        ${col.items.sort((a,b)=>lastContact(b[1])-lastContact(a[1])).map(card).join("") || `<div class="empty" style="padding:12px">None</div>`}
-      </div>`).join("")}
-    </div>`;
+    <div class="board" style="grid-template-columns:${cols.map(col=>collapsedCols.has(col.key)?"52px":"minmax(230px,1fr)").join(" ")}">${cols.map(col=>{ const shut=collapsedCols.has(col.key); return `
+      <div class="col ${col.cls||""}${shut?" shut":""}" data-col="${col.key}"><h2 data-fold="${col.key}" title="${shut?"Show":"Hide"} ${esc(col.label)}"><span class="fold">${shut?"\u25B8":"\u25BE"}</span><span class="lbl">${esc(col.label)}</span><span class="n">${col.items.length}</span></h2>
+        ${shut ? "" : (col.items.sort((a,b)=>lastContact(b[1])-lastContact(a[1])).map(card).join("") || `<div class="empty" style="padding:12px">None</div>`)}
+      </div>`; }).join("")}
+    </div>
+    <div class="meta" style="margin-top:6px">Tap a column title to fold it away or bring it back. Folded columns stay folded on this device.</div>`;
   const form=$("#quickAdd");
   if(prev){ for(const [k,v] of Object.entries(prev)) if(form.elements[k]) form.elements[k].value=v; if(focusName && form.elements[focusName]){ const el=form.elements[focusName]; el.focus(); try{ el.setSelectionRange(el.value.length,el.value.length); }catch(e){} } }
   const showDup = () => { const hit=findByPhone(form.phone.value); $("#quickDup").innerHTML = hit ? dupHtml(hit) : ""; wireDup($("#quickDup")); if(!hit) quickDupAck=null; return hit; };
@@ -791,9 +812,17 @@ function renderLeads(m){
     if(!d.source){ toast("Pick a lead source"); form.source.focus(); return; }
     const hit=findByPhone(d.phone);
     if(hit && quickDupAck!==hit.id){ quickDupAck=hit.id; toast(`That number belongs to ${hit.c.name}. Open the record, or press Add lead again to add a second record.`); return; }
-    quickDupAck=null;
-    await saveClient(null, { name:d.name.trim(), phone:d.phone.trim(), address:d.address.trim(), region:d.region, source:d.source, interest:d.interest.trim(), status:"new", lastContactAt: Date.now() }, "Added lead "+d.name.trim());
-    form.reset(); $("#quickDup").innerHTML=""; form.name.focus();
+    if(quickBusy) return; quickBusy=true; quickDupAck=null;
+    // Clear the form before saving. Saving redraws the board, and the redraw keeps whatever is in the form,
+    // so clearing afterward would hit the old, replaced form and leave the boxes full.
+    form.reset(); $("#quickDup").innerHTML="";
+    try{
+      await saveClient(null, { name:d.name.trim(), phone:d.phone.trim(), address:d.address.trim(), region:d.region, source:d.source, interest:d.interest.trim(), status:"new", lastContactAt: Date.now() }, "Added lead "+d.name.trim());
+      const f2=$("#quickAdd"); if(f2){ f2.reset(); f2.name.focus(); } const qd=$("#quickDup"); if(qd) qd.innerHTML="";
+    }catch(e){
+      const f2=$("#quickAdd"); if(f2) for(const [k,v] of Object.entries(d)) if(f2.elements[k]) f2.elements[k].value=v;
+      toast("Not saved: "+(e.code||e.message)+". Your typing is still in the form.");
+    }finally{ quickBusy=false; }
   };
   $("#quickGo").onclick = quick;
   form.onkeydown = e => { if(e.key==="Enter" && e.target.tagName==="INPUT"){ e.preventDefault(); quick(); } };
@@ -803,6 +832,7 @@ function renderLeads(m){
     el.ondragend = () => el.classList.remove("dragging");
   });
   m.querySelectorAll("select[data-stage]").forEach(s=> s.onchange = () => setStatus(s.dataset.stage, s.value));
+  m.querySelectorAll("[data-fold]").forEach(h=> h.onclick = () => toggleCol(h.dataset.fold));
   m.querySelectorAll(".col").forEach(col=>{
     col.ondragover = e => { e.preventDefault(); col.classList.add("drop"); };
     col.ondragleave = () => col.classList.remove("drop");
@@ -907,8 +937,6 @@ function fillSelects(){
   $("#regionSel").innerHTML = `<option value="">Not set</option>`+opts(REGIONS,"");
   $("#statusSel").innerHTML = opts(Object.keys(STATUSES),"",STATUSES);
   $("#sourceSel").innerHTML = `<option value="">Choose</option>`+opts(SOURCES,"");
-  $("#payMethodSel").innerHTML = opts(PAY_METHODS,"",{"":"Not set"});
-  $("#payStatusSel").innerHTML = opts(Object.keys(PAY_STATUSES),"",{...PAY_STATUSES,"":"Not set"});
   $("#addSvcSel").innerHTML = `<option value="">+ Add service</option>`+Object.entries(SERVICE_TYPES).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join("");
 }
 fillSelects();
@@ -916,7 +944,6 @@ function openClient(id, defaultStatus){
   openId = id; const c = id ? clients[id] : { status: defaultStatus||"new" };
   const f=$("#clientForm");
   f.name.value=c.name||""; f.phone.value=c.phone||""; f.email.value=c.email||""; f.address.value=c.address||""; f.region.value=c.region||""; f.status.value=c.status||"new"; f.source.value=c.source||""; f.interest.value=c.interest||"";
-  f.payMethod.value=c.payMethod||""; f.payStatus.value=c.payStatus||""; f.qbId.value=c.qbId||"";
   $("#clientTitle").textContent = id ? c.name : "New client";
   draftServices = JSON.parse(JSON.stringify(c.services||{})); removedServices = new Set();
   renderStamps(); renderSvcs(); renderLog(); renderContracts(); showDlgDup();
@@ -927,7 +954,9 @@ function openClient(id, defaultStatus){
 function showDlgDup(){ const hit=findByPhone($("#dlgPhone").value, openId); $("#dlgDup").innerHTML = hit ? dupHtml(hit) : ""; wireDup($("#dlgDup")); }
 $("#dlgPhone").oninput = showDlgDup;
 function renderStamps(){
-  const c = openId ? clients[openId] : null; if(!c){ $("#clientStamps").innerHTML=""; return; }
+  const c = openId ? clients[openId] : null;
+  $("#billSummary").innerHTML = !c ? "" : `<b>Billing:</b> ${c.payStatus?esc(PAY_STATUSES[c.payStatus]||c.payStatus):"no payment recorded"}${c.payMethod?" · "+esc(c.payMethod):""}${c.qbId?" · QuickBooks customer "+esc(c.qbId):""}. Payments are recorded from Ways to pay on each signed contract.`;
+  if(!c){ $("#clientStamps").innerHTML=""; return; }
   $("#clientStamps").innerHTML = `<b>First contact</b><span>${fmtStamp(c.firstContactAt||c.createdAt)}</span><b>Last contact</b><span>${fmtStamp(lastContact(c))} <i class="meta">(${ago(lastContact(c))})</i></span>${c.wonAt?`<b>Won</b><span>${fmtStamp(c.wonAt)}</span>`:""}`;
 }
 function refreshDialogLive(){ if(openId && !clients[openId]) { $("#clientDlg").close(); return; } renderStamps(); renderContracts(); }
@@ -1015,7 +1044,7 @@ $("#clientForm").onkeydown = e => { if(e.key==="Enter" && e.target.tagName==="IN
 $("#clientSave").onclick = async () => {
   const f=$("#clientForm"); readSvcForm();
   const services = {}; for(const [sid,s] of Object.entries(draftServices)) services[sid]=s;
-  const data = { name:f.name.value.trim(), phone:f.phone.value.trim(), email:f.email.value.trim(), address:f.address.value.trim(), region:f.region.value, status:f.status.value, source:f.source.value, interest:f.interest.value.trim(), payMethod:f.payMethod.value, payStatus:f.payStatus.value, qbId:f.qbId.value.trim() };
+  const data = { name:f.name.value.trim(), phone:f.phone.value.trim(), email:f.email.value.trim(), address:f.address.value.trim(), region:f.region.value, status:f.status.value, source:f.source.value, interest:f.interest.value.trim() };
   if(!data.name){ toast("Name is required"); f.name.focus(); return; }
   if(!data.source){ toast("Pick a lead source"); f.source.focus(); return; }
   const prev = openId ? clients[openId] : null;
@@ -1197,12 +1226,18 @@ const feeFor = (method, P) => method==="Venmo" ? +P.venmoFee||0 : method==="PayP
 const payInfo = () => ({ ...PAY_DEFAULTS, ...(templates._payInfo||{}) });
 const r2 = n => Math.round(n*100)/100;
 const withFee = (amt, pct) => r2(amt*(1+pct/100));
+// The amount on the signed contract: the service price stored with it, or the first dollar figure in its text.
+function contractAmount(rec){
+  if(rec.amount!=null && rec.amount!=="" && !isNaN(+rec.amount)) return +rec.amount;
+  const m=/\$\s?([\d,]+(?:\.\d{1,2})?)/.exec(rec.text||""); return m ? +m[1].replace(/,/g,"") : null;
+}
 function openPaySheet(clientId, cid, rec){
-  const P=payInfo(), c=clients[clientId]||{}, amt=rec.amount;
+  const P=payInfo(), c=clients[clientId]||{}, amt=contractAmount(rec);
   const paid=(c.contracts?.[cid]||{}).payment;
   const price = v => amt==null ? "the amount on your invoice" : money(v);
-  const opt = (k, title, body, total, feeNote) => `<div class="payopt${feeNote?"":" nofee"}"><div class="ph"><b>${title}</b><span class="amt">${total}</span></div><div class="pb">${body}</div>${feeNote?`<div class="pf">${feeNote}</div>`:`<div class="pf ok">No added fee</div>`}</div>`;
-  const feeOpt = (k, title, body, method, what) => { const f=feeFor(method,P); return opt(k, title, body, amt==null?price(amt):money(withFee(amt,f)), f ? `Includes the ${f}% ${what} fee` : ""); };
+  const opt = (k, title, body, total, feeNote) => `<div class="payopt${feeNote?"":" nofee"}" data-opt="${k}"><div class="ph"><b>${title}</b><span class="amt"><small>Amount due</small>${total}</span></div><div class="pb">${body}</div>${feeNote?`<div class="pf">${feeNote}</div>`:`<div class="pf ok">No added fee</div>`}</div>`;
+  const feeOpt = (k, title, body, method, what) => { const f=feeFor(method,P); if(!f) return opt(k, title, body, price(amt));
+    return opt(k, title, body, amt==null?price(amt):money(withFee(amt,f)), amt==null ? `Plus the ${f}% ${what} fee` : `${money(amt)} + ${money(r2(withFee(amt,f)-amt))} ${what} fee (${f}%)`); };
   const rows = [
     P.zelle ? opt("zelle","Zelle",`Send it now to <b>${esc(P.zelle)}</b>.`, price(amt)) : "",
     opt("check","Check",`Make it payable to <b>${esc(P.checkPayable||COMPANY)}</b> and hand it to us today.`, price(amt)),
@@ -1220,7 +1255,7 @@ function openPaySheet(clientId, cid, rec){
       <div class="meta">Thank you, ${esc(rec.signerName||c.name||"")}</div>
       <h3>${esc(rec.tplName)}</h3>
       <div class="pssvc">${esc(rec.serviceSummary||"")}</div>
-      <div class="pstotal"><span>Total</span><b>${amt==null?"See invoice":money(amt)}</b></div>
+      <div class="pstotal"><span>Contract total</span><b>${amt==null?"See contract":money(amt)}</b></div>
       <h4>Ways to pay</h4>
       ${rows}
       <div class="psadmin"><div class="meta"><b>For ${esc(COMPANY.replace(" LLC",""))}:</b> how did they pay?${paid?` Recorded: ${esc(paid.method==="later"?"paying later":paid.method)}.`:""}</div>
@@ -1247,7 +1282,7 @@ function payLine(clientId, cid, rec){
 // Records how the client paid (or that they will pay later) and queues the matching QuickBooks work.
 async function recordPayment(clientId, cid, rec, method){
   const P=payInfo(), fee=feeFor(method,P), now=Date.now(), later=method==="later";
-  const amt=rec.amount, hasFee=fee>0;
+  const amt=contractAmount(rec), hasFee=fee>0;
   const total = amt==null ? null : (hasFee ? withFee(amt,fee) : amt);
   const upd = {
     [`clients/${clientId}/contracts/${cid}/payment`]: { method, status: later?"open":"paid", amount:amt, fee: hasFee&&amt!=null ? r2(total-amt) : 0, total, at:now, by:me.email },
@@ -1290,7 +1325,7 @@ async function viewContract(clientId, cid, recIn){
   const c=clients[clientId]||{};
   signCtx = { mode:"view", clientId, cid, rec };
   $("#signTitle").textContent = rec.tplName + (rec.sample?" (SAMPLE)":"") + (rec.voided?" (VOIDED)":"");
-  const mail = c.email ? `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent("Your signed "+rec.tplName)}&body=${encodeURIComponent(`Good afternoon ${rec.signerName},\n\nAttached is your signed ${rec.tplName} from ${fmtLong(rec.signedDate)}.\n\nThank you for choosing Mangiapane Brothers.\n\nMangiapane Brothers Lawn and Snow LLC\nReliable Service. Uncompromising Standards.`)}` : "";
+  const mail = c.email ? `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent("Your signed "+rec.tplName)}&body=${encodeURIComponent(`Good afternoon ${rec.signerName},\n\nAttached is your signed ${rec.tplName} from ${fmtLong(rec.signedDate)}.\n\nThank you for choosing Mangiapane Brothers.\n\nMangiapane Brothers Lawn and Snow LLC\nFull-Service Property Maintenance for Those Who Take Pride in Their Home`)}` : "";
   $("#signBody").innerHTML = `<div class="doc" id="docView">${contractDocHtml(rec)}</div>
     <div class="signpanel">
       <div class="row"><button type="button" class="primary" id="cvPrint">Print or save PDF</button>${mail?`<a href="${mail}" class="small" style="text-decoration:none"><button type="button">Email the client</button></a>`:`<span class="meta">No email on file for this client.</span>`}
@@ -1683,6 +1718,23 @@ $("#moreBtn").onclick = e => {
 };
 document.addEventListener("click", e => { if(!e.target.closest("#more")) closeMore(); });
 document.addEventListener("keydown", e => { if(e.key==="Escape") closeMore(); });
+</script>
+<div class="pgdrawer-bg" id="pgDrawerBg"></div>
+<nav class="pgdrawer" id="pgDrawer" aria-label="Pages" aria-hidden="true">
+  <div class="pdhead"><b>Mangiapane Brothers</b><button type="button" class="pdx" id="pgDrawerX" aria-label="Close page menu">&times;</button></div>
+  <a href="./index.html">Projects<span>Admin task dashboard</span></a><a href="./crm.html" class="here" aria-current="page">CRM<span>Leads, clients, contracts</span></a><a href="./routes.html">Routes<span>Door hanger routes</span></a>
+  <div class="pdfoot">Full-Service Property Maintenance for Those Who Take Pride in Their Home</div>
+</nav>
+<script>
+// Page menu: opens from the three-line button, closes with the X, a tap outside, Escape, or a swipe left.
+(function(){
+  const btn=document.getElementById("navBtn"), d=document.getElementById("pgDrawer"), bg=document.getElementById("pgDrawerBg"), x=document.getElementById("pgDrawerX");
+  const set=open=>{ d.classList.toggle("open",open); bg.classList.toggle("open",open); d.setAttribute("aria-hidden",String(!open)); btn.setAttribute("aria-expanded",String(open)); if(open) x.focus(); };
+  btn.onclick=()=>set(!d.classList.contains("open")); x.onclick=()=>set(false); bg.onclick=()=>set(false);
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && d.classList.contains("open")) set(false); });
+  let x0=null; d.addEventListener("pointerdown",e=>{ x0=e.clientX; }); d.addEventListener("pointerup",e=>{ if(x0!=null && x0-e.clientX>60) set(false); x0=null; });
+  window.__pageMenu={open:()=>set(true),close:()=>set(false)};
+})();
 </script>
 </body>
 </html>
