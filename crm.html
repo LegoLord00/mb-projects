@@ -222,6 +222,27 @@
   .payopt .ph{display:flex;justify-content:space-between;gap:10px;font-size:16px} .payopt .amt{font-weight:700;text-align:right} .payopt .amt small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .payopt .pb{font-size:14px;color:var(--ink2);margin-top:3px} .payopt .pf{font-size:12px;color:var(--amber);margin-top:4px} .payopt .pf.ok{color:var(--green)}
   .psadmin{margin-top:18px;padding-top:12px;border-top:1px dashed var(--line)}
+  /* Seasonal Services Agreement */
+  .ssahead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #b9bec7;padding-bottom:8px;margin-bottom:14px;font:14px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#5d6470}
+  .ssahead img{height:56px;width:auto}
+  .doc table{width:100%;border-collapse:collapse;margin:6px 0 14px;font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .doc th{background:#1f3864;color:#fff;text-align:left;font-weight:700;padding:8px 10px;font-size:13px;letter-spacing:.04em;text-transform:none;border:1px solid #1f3864}
+  .doc td{border:1px solid #b9bec7;padding:7px 10px;color:#16233a;vertical-align:top}
+  .doc td.r{text-align:right;white-space:nowrap;width:130px;font-weight:600}
+  .doc tr.tot td{background:#f3ebd3;font-weight:700}
+  #ssaForm [hidden]{display:none!important}
+  .ssack{margin:6px 0;color:var(--ink);font-size:15px;gap:10px;flex-wrap:nowrap;align-items:center}
+  .ssack input{width:24px;height:24px;flex:none}
+  .ssabox{margin:4px 0 4px 34px}
+  .ssaqty{display:inline-flex;align-items:center;gap:6px;font-size:14px;margin-right:6px}
+  .ssaqty input{width:64px}
+  .ssabar{flex:none;background:#1f3864;color:#fff;padding:10px 18px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:15px}
+  .ssabar b{font-size:22px;margin-left:8px}
+  .ssabar button{background:#fff;color:#1f3864;border:0;font-weight:700;min-height:44px;padding:8px 16px;white-space:nowrap;flex:none}
+  .ssahead{gap:12px} .ssahead span{text-align:right}
+  .ssanotice{border:2px dashed #16233a;border-radius:6px;padding:16px 18px;margin-top:22px;break-inside:avoid}
+  .doc.ssanotice{max-width:760px;margin:16px auto 0;border:2px dashed #16233a}
+  .ssanotice h3{margin-top:0;text-align:center;letter-spacing:.04em}
   #printArea{display:none}
   @media print{
     body>*:not(#printArea){display:none!important}
@@ -733,13 +754,14 @@ function contractNeeds(c){
   const out=[]; const mir=c.contracts||{};
   for(const s of svcList(c)) for(const [tid,t] of Object.entries(templates)){
     if(tid.startsWith("_")) continue;
+    if(SSA_TYPES.includes(s.type)) continue; // covered by the Seasonal Services Agreement
     if(t.active===false || !(t.services||{})[s.type]) continue;
     const signed = Object.entries(mir).filter(([,m])=>m.tpl===tid && m.sid===s.sid && m.status==="signed" && !m.voided).sort((a,b)=>b[1].signedAt-a[1].signedAt)[0] || null;
     out.push({tid, t, sid:s.sid, s, signed});
   }
   return out;
 }
-const unsignedFor = (c, sid) => (c.status==="active"||c.status==="quoted") && contractNeeds(c).some(x=>!x.signed && (!sid || x.sid===sid));
+const unsignedFor = (c, sid) => (c.status==="active"||c.status==="quoted") && (contractNeeds(c).some(x=>!x.signed && (!sid || x.sid===sid)) || ssaOpen(c, sid));
 const unsignedPill = (c, sid) => unsignedFor(c, sid) ? ` <span class="pill unsigned" title="A required contract is not signed">unsigned</span>` : "";
 
 // ---------- render ----------
@@ -1008,15 +1030,17 @@ function renderContracts(){
   const needs = contractNeeds(c);
   const mir = Object.entries(c.contracts||{});
   const shown = new Set(needs.filter(x=>x.signed).map(x=>x.signed[0]));
+  const ssaSg=ssaSigned(c); if(ssaSg) shown.add(ssaSg[0]);
   const others = mir.filter(([cid])=>!shown.has(cid)).sort((a,b)=>b[1].signedAt-a[1].signedAt);
   const dirty = dialogDirty();
   $("#ctrCount").textContent = needs.length ? `(${needs.filter(x=>x.signed).length} of ${needs.length} signed)` : "";
-  box.innerHTML = (dirty ? `<div class="warnline">Services changed. Save first so the contract shows the right price and dates.</div>` : "") +
+  box.innerHTML = ssaRowHtml(c, dirty) + (dirty ? `<div class="warnline">Services changed. Save first so the contract shows the right price and dates.</div>` : "") +
     needs.map(x=>`<div class="ctr"><div class="t"><b>${esc(x.t.name)}</b>${x.t.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">${esc(SERVICE_TYPES[x.s.type].label)}: ${esc(SERVICE_TYPES[x.s.type].summary(x.s))}</div></div>
       ${x.signed?`<span class="pill signed">Signed ${fmtDate(new Date(x.signed[1].signedAt).toLocaleDateString("en-CA",{timeZone:TZ}))}</span><button type="button" class="small" data-view-ctr="${x.signed[0]}">View</button>`
                :`<span class="pill unsigned">Not signed</span><button type="button" class="small primary" data-sign="${x.tid}|${x.sid}" ${dirty?"disabled":""}>Open to sign</button>`}</div>`).join("") +
     others.map(([cid,m])=>`<div class="ctr"><div class="t"><b>${esc(m.name||"Contract")}</b>${m.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">${m.voided?"Voided":"Service since removed or changed"} · signed ${fmtStamp(m.signedAt)}</div></div><span class="pill ${m.voided?"voided":"signed"}">${m.voided?"Voided":"Signed"}</span><button type="button" class="small" data-view-ctr="${cid}">View</button></div>`).join("") +
-    (!needs.length && !others.length ? `<div class="meta">No contract applies to these services. Contracts are set per service in More &gt; Contracts.</div>` : "");
+    "";
+  box.querySelectorAll("[data-ssa]").forEach(b=>b.onclick=()=>openSeasonal(openId));
   box.querySelectorAll("[data-sign]").forEach(b=>b.onclick=()=>{ const [tid,sid]=b.dataset.sign.split("|"); openSigning(openId, tid, sid); });
   box.querySelectorAll("[data-view-ctr]").forEach(b=>b.onclick=()=>viewContract(openId, b.dataset.viewCtr));
 }
@@ -1089,6 +1113,7 @@ function renderDocHtml(text, mode, choices, initials){
     let lines=b.split("\n").filter(l=>l.trim()!=="" ); if(!lines.length) return "";
     let head="";
     const h=/^(#{1,3})\s+(.*)$/.exec(lines[0]); if(h){ const n=h[1].length+1; head=`<h${n}>${inline(h[2])}</h${n}>`; lines=lines.slice(1); if(!lines.length) return head; }
+    if(lines.every(l=>/^\|/.test(l))) return head+ssaTable(lines, inline);
     if(lines.every(l=>/^\s*[-*]\s+/.test(l))) return head+"<ul>"+lines.map(l=>"<li>"+inline(l.replace(/^\s*[-*]\s+/,""))+"</li>").join("")+"</ul>";
     if(lines.every(l=>/^\s*\d+[.)]\s+/.test(l))) return head+"<ol>"+lines.map(l=>"<li>"+inline(l.replace(/^\s*\d+[.)]\s+/,""))+"</li>").join("")+"</ol>";
     if(lines.every(l=>/^\s*\[\[check:/.test(l))) return head+lines.map(inline).join("");
@@ -1311,11 +1336,12 @@ async function driveStatus(clientId, cid, rec, start){
 // ---------- viewing a signed contract ----------
 function contractDocHtml(rec){
   return `${rec.sample?`<div class="samplebar">SAMPLE CONTRACT. Signed as a test only. Not binding.</div>`:""}${rec.voided?`<div class="voidbar">VOIDED ${esc(fmtStamp(rec.voidedAt))}${rec.voidReason?": "+esc(rec.voidReason):""}</div>`:""}
-    ${renderDocHtml(rec.text,"view",rec.choices,rec.initials)}
+    ${rec.kind==="seasonal"?SSA_HEAD:""}${renderDocHtml(rec.text,"view",rec.choices,rec.initials)}
     <div class="sigs">
       <div><img src="${rec.signature}" alt="Client signature"><b>${esc(rec.signerName)}</b><br>Client · ${esc(fmtLong(rec.signedDate))}</div>
-      <div>${rec.companySig?`<img src="${rec.companySig}" alt="Company signature">`:""}<b>${esc(rec.companySigner||"")}</b><br>For ${esc(COMPANY)} · ${esc(fmtLong(rec.signedDate))}</div>
+      <div>${rec.companySig?`<img src="${rec.companySig}" alt="Company signature">`:""}<b>${esc(rec.companySigner||"")}</b><br>For ${esc(rec.kind==="seasonal"?"Mangiapane Brothers LLC":COMPANY)} · ${esc(fmtLong(rec.signedDate))}</div>
     </div>
+    ${rec.notice?`<div class="ssanotice">${renderDocHtml(rec.notice,"view")}</div>`:""}
     <div class="fp">Signed ${esc(fmtStamp(rec.signedAt))} Eastern · witness ${esc(rec.witness)} · template "${esc(rec.tplName)}" version ${esc(rec.tplVersion)}<br>Record fingerprint (SHA-256): ${esc(rec.hash)}</div>`;
 }
 async function viewContract(clientId, cid, recIn){
@@ -1472,7 +1498,7 @@ function renderContractsView(m){
   const list=Object.entries(templates).filter(([id])=>!id.startsWith("_")).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
   const signedCount = live().reduce((n,[,c])=>n+Object.values(c.contracts||{}).filter(x=>x.status==="signed"&&!x.voided&&!x.sample).length,0);
   m.innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Contract templates</h2><button class="primary" id="tplNew">+ New template</button></div>
-    <p class="meta">A template is assigned automatically to every client who has one of its services. The client's name, address, price, and dates fill in when the contract opens. ${signedCount} real contracts signed so far.</p>
+    <p class="meta">A template is assigned automatically to every client who has one of its services. Fall cleanup, Christmas lights and snow use the built-in Seasonal Services Agreement instead (open a client, Contracts, Set up and sign); templates for those three services are ignored. The client's name, address, price, and dates fill in when the contract opens. ${signedCount} real contracts signed so far.</p>
     ${list.some(([,t])=>t.sample&&t.active!==false)?`<div class="warnline">The SAMPLE templates are placeholders. Replace their text with the real contracts before any real client signs. Have a lawyer read the real text once.</div>`:""}
     <table style="margin-top:8px"><thead><tr><th>Template</th><th>Services</th><th>Version</th><th>Status</th><th></th></tr></thead><tbody>
     ${list.map(([id,t])=>`<tr><td><b>${esc(t.name)}</b>${t.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">updated ${fmtStamp(t.updatedAt)}${t.updatedBy?" by "+esc(t.updatedBy.split("@")[0]):""}</div></td>
@@ -1540,6 +1566,316 @@ $("#tplSave").onclick = async () => {
   $("#tplDlg").close();
 };
 cache.contractTemplates = () => templates;
+
+// ---------- Seasonal Services Agreement: the one real contract for fall cleanup, lights and snow ----------
+// The admin sets it up (services, options, property details), then hands the iPad over. The customer sees a
+// finished agreement that holds only the services chosen, and signs at the bottom. Nothing else to fill in.
+// Prices and clause text come from the company's Seasonal Services Agreement. Changing either: raise SSA_VERSION.
+const SSA_VERSION = 1;
+const SSA_NAME = "Seasonal Services Agreement";
+const SSA_TYPES = ["fall","lights","snow"];
+const SSA_FALL = { south:435, north:595 };
+const SSA_FALL_DESC = "Two leaf visits timed to city pickup, free gutter cleaning on final visit, roof look while on the ladder, beds cleared of leaves, sticks gathered, everything blown to the curb.";
+const SSA_FALL_ADJ = [["two","Two-storey home",75],["corner","Corner lot",80],["oak","Heavy oak lot",60]];
+const SSA_PKG = [
+  {k:"showcase",n:"Showcase",d:"Full Front + 2 more shrubs (6 total), 1 medium tree wrapped, and a full season Fall Cleanup. Westland: Fall Cleanup not available, price is $1,160.",sw:1595,n2:1895,wl:1160},
+  {k:"fullfront",n:"Full Front",d:"Roofline, plus up to 4 front shrubs wrapped.",sw:895,n2:1045},
+  {k:"roofline",n:"Roofline",d:"Front roofline in LED, up to 120 ft, and a wreath hung on the front door.",sw:625,n2:795} ];
+const SSA_LIGHTS_NOTE = "Every package includes commercial-grade lights, installation, timer and extension cords, service calls all season, lit by Thanksgiving (Nov 26), and takedown by end of January.";
+const SSA_ADDONS = [["shrub","Extra shrub",65],["medTree","Medium tree",225],["lgTree","Large tree",325],["wreath","Extra wreath, hung",55]];
+const SSA_L_ADJ = [["two","Two-story home",150],["twoShow","Two-story home (Showcase)",225],["steep","Steep roof over 7/12 pitch",125]];
+// sw / n2: season price South-Westland / North. ppSw / ppN: per-push rate after the season limit.
+const SSA_SNOW = [{k:"standard",n:"Standard lot",sw:550,n2:590,ppSw:45,ppN:50},{k:"corner",n:"Corner lot",sw:750,n2:790,ppSw:60,ppN:65}];
+const SSA_TERM = { fall:["Fall Cleanup","October - November"], lights:["Holiday Lighting","November - January"], snow:["Snow & Ice Removal","November – March 15"] };
+const SSA_ART = [{"n": 3, "title": "Fall Cleanup Terms", "svc": "fall", "items": [["3.1", "Scheduling.", "Visits are scheduled by the Company and will occur based on the service plan purchased."], ["3.2", "Debris Disposal.", "Leaves and yard waste will be collected and set outside the house for the city service to collect"], ["3.3", "Gutters.", "Gutter cleaning covers structures safely reachable by ladder. If the crew determines a gutter is unsafe to clean, the customer will be notified"], ["3.4", "Concealed Items.", "The Company is not responsible for damage to items concealed by leaves or vegetation, including hoses, toys, unmarked sprinkler heads and low-voltage wiring."]]}, {"n": 4, "title": "Snow and Ice Removal Terms", "svc": "snow", "items": [["4.1", "Trigger Depth.", "Service is performed after a storm ends, and only when more than 1 inch of snow has accumulated, as measured by the Company at the Property. Drifting snow does not count toward the trigger depth."], ["4.2", "Response Time.", "The Company will clear the Property within 24 hours of the end of the storm. The Company determines when a storm has ended. When a storm brings more than 5 inches of snow, the Company may, at its sole discretion, clear the Property twice, with the first pass made during the storm. The Company is not obligated to make more than one pass per storm and does not guarantee completion by a specific time."], ["4.3", "Route Priority.", "The Company sets its service routes to serve every customer in an efficient and timely manner. Commercial and emergency-access accounts may be serviced first."], ["4.4", "Municipal Plow Windrows.", "Snow deposited at the driveway apron by city or county plows after a Company visit will be cleared on the next scheduled visit, unless the Customer requests and pays for a return trip at the per-push rate."], ["4.5", "Ice Conditions.", "Snow removal does not eliminate all ice. Salt or ice melt is applied on the designated parameters in Section 1.3. The Customer acknowledges that melting, refreezing and runoff can create ice between visits that is outside the Company’s control."], ["4.6", "Snow Placement.", "The Company will pile snow in reasonable locations on the Property and will not push snow into public streets."], ["4.7", "Site Markers.", "The Company may install stakes or markers along drive edges, curbs, beds and fixtures before the first snowfall. The Customer shall leave markers in place until the season ends. If removed, the customer is liable for any and all damages incurred."]]}, {"n": 5, "title": "Holiday Lighting Terms", "svc": "lights", "items": [["5.1", "Installation and Removal.", "Installation and removal will be completed by the dates in Section 1.4, weather permitting."], ["5.2", "Ownership of Materials.", "Company-supplied lights, clips, cords and timers remain the property of the Company and are leased to the Customer for the season. The Customer shall pay replacement cost for leased materials lost, stolen, or damaged. Additional Customer-owned lights remain the Customer’s property, and the Company is not responsible for their operation or maintenance."], ["5.3", "Electrical Supply.", "The Customer shall provide working, GFCI-protected exterior outlets of adequate capacity. The Company does not perform electrical wiring and is not responsible for tripped breakers, outlet failures or electricity costs."], ["5.4", "Maintenance.", "The Company provides one free service visit. Any additional maintenance visit will result in a charge to the client. Damage caused by weather, animals, vandalism or the Customer will be billed at the service-call rate."], ["5.5", "Attachment.", "The Company uses clips and fasteners designed to minimize damage. The Company is not responsible for minor marks from normal clip installation or for damage resulting from pre-existing rot, loose gutters, brittle shingles or structural weakness."]]}, {"n": 6, "title": "Payment Terms", "svc": "", "items": [["6.1", "Deposit.", "A full deposit is required at the signing of the contract. No service will be scheduled until the deposit is received."], ["6.2", "Payment Methods.", ""], ["6.3", "Late Payment.", "Late payments incur a 10% penalty fee. The Company may suspend services while an account is past due; suspension does not reduce the amount owed."], ["6.4", "Returned Payments.", "Each returned check or reversed payment that results in a late payment will incur the same 10% penalty fee plus any additional charges incurred by the Company related towards collecting payment."], ["6.5", "Collection Costs.", "To the extent permitted by Michigan law, the Customer shall pay reasonable collection costs and attorney fees incurred by the Company to collect any unpaid balance."], ["6.6", "Billing Disputes.", "The Customer must dispute any invoice in writing within 30 days of its date. Undisputed amounts remain due when payable."]]}, {"n": 7, "title": "Customer Obligations", "svc": "", "items": [["7.1", "", "Provide access to all service areas, including unlocked gates."], ["7.2", "", "Keep service areas clear of vehicles, refuse containers, toys, hoses and other objects. Blocked areas may be skipped or serviced around and will still be billed."], ["7.3", "", "Identify or mark concealed or fragile items before service, including sprinkler heads, landscape lighting, buried cables, invisible pet fencing, low walls, decorative stones and curbing."], ["7.4", "", "Keep pets secured during service visits."], ["7.5", "", "Report any damage or service deficiency in writing (text or email is acceptable) within forty-eight (48) hours of the visit, with photographs when possible. Late claims may be denied."], ["7.6", "", "Promptly notify the Company of changes to the Property, including new landscaping, construction, or a change in ownership or occupancy."]]}, {"n": 8, "title": "Insurance, Liability and Force Majeure", "svc": "", "items": [["8.1", "Insurance.", "The Company maintains general liability insurances related to the services provided."], ["8.2", "Repair of Damage.", "If the Company’s negligence damages the Property, the Company will, at its option, repair the damage or pay the reasonable cost of repair, provided the Customer gives timely notice under Section 7.5."], ["8.3", "Exclusions.", "The Company is not responsible for: ordinary wear to turf, lawn edges and gravel from plowing; damage to concealed, unmarked or undisclosed items; pre-existing conditions; effects of ordinary salt or ice-melt use (including concrete scaling and damage to plants or turf) where such service was requested; or damage to concrete, asphalt or pavers in poor condition."], ["8.4", "Changing Conditions.", "Snow and ice conditions may change after the Company leaves the Property. The Customer remains responsible for monitoring the Property between visits, warning visitors of hazards, and requesting additional service when needed. The Company is responsible only for its own negligence in performing the services selected in Article 2."], ["8.5", "Limitation of Liability.", "Except for gross negligence or willful misconduct, the Company’s total liability under this Agreement shall not exceed the amount paid by the Customer for the season in which the claim arose. Neither Party is liable for indirect, incidental or consequential damages, including lost profits or rental income."], ["8.6", "Force Majeure.", "The Company is not in breach for delays or failures caused by severe weather, travel bans, equipment failure, fuel shortages, illness, road closures or other events beyond its reasonable control. Service will resume as soon as reasonably practicable."]]}, {"n": 9, "title": "Cancellation and Termination", "svc": "", "items": [["9.1", "Customer’s Three-Day Right to Cancel.", "The Customer may cancel this Agreement, without any penalty or obligation, at any time before midnight of the third business day after the date of this Agreement, by written notice to the Company. If the Customer cancels within that period, the Company will refund all payments made under this Agreement within 10 business days after receiving the notice. See the Notice of Cancellation at the end of this Agreement."], ["9.2", "By Company.", "The Company may terminate this Agreement on 3 days’ written notice, or immediately for non-payment, unsafe conditions, or abusive conduct toward Company personnel. The Company will refund prepaid amounts for services not performed."], ["9.3", "No Automatic Renewal.", "This Agreement does not renew automatically. The Company may offer renewal in writing before the next season."]]}, {"n": 10, "title": "General Provisions", "svc": "", "items": [["10.1", "Independent Contractor.", "The Company is an independent contractor and controls the means, methods, equipment, and personnel used to perform the services, and may use subcontractors."], ["10.2", "Photographs.", "The Company may photograph the Property before and after service for its records."], ["10.3", "Entire Agreement; Amendments.", "This Agreement, with any attached exhibits, is the entire agreement of the Parties and supersedes all prior discussions. Amendments must be in writing and signed or confirmed by email by both Parties."], ["10.4", "Governing Law; Venue.", "This Agreement is governed by the laws of the State of Michigan. Any dispute shall be brought in the courts of Wayne County, Michigan, including small claims court where eligible."], ["10.5", "Severability.", "If any provision is held unenforceable, the remaining provisions remain in full force and effect."], ["10.6", "Notices.", "Notices under this Agreement may be delivered by hand, mail, or email to the addresses in Article 1."], ["10.7", "Counterparts; Electronic Signatures.", "This Agreement may be signed in counterparts and by electronic signature, each of which is deemed an original."]]}];
+const SSA_LOGO = "data:image/png;base64,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";
+const SSA_HEAD = `<div class="ssahead"><img src="${SSA_LOGO}" alt="Mangiapane Brothers Lawn &amp; Snow LLC"><span>${SSA_NAME}</span></div>`;
+
+const ssaBlank = c => ({
+  zone: c.region==="Newburgh / 7 Mile" ? "north" : "south",
+  ptype:"Residential", prop:c.address||"", areas:"", pre:"", email:c.email||"",
+  fall:{ on:hasSvc(c,"fall"), two:false, corner:false, oak:false, big:false, bigPrice:"" },
+  lights:{ on:hasSvc(c,"lights"), pkg:"", westland:c.region==="Westland", color:"", shrub:0, medTree:0, lgTree:0, wreath:0, two:false, twoShow:false, steep:false, ft:0 },
+  snow:{ on:hasSvc(c,"snow"), lot:"" } });
+// Showcase outside Westland carries a full Fall Cleanup inside its price.
+const ssaShowcaseFall = S => S.lights.on && S.lights.pkg==="showcase" && !(S.zone==="south" && S.lights.westland);
+function ssaCalc(S){
+  const f=S.fall, l=S.lights, s=S.snow, north=S.zone==="north", fl=[], ll=[], sl=[]; let fall=0, lights=0, snow=0;
+  if(f.on){ fall+=SSA_FALL[S.zone]; fl.push([`Full Fall Cleanup (${north?"North":"South"})`,SSA_FALL[S.zone]]);
+    SSA_FALL_ADJ.forEach(([k,n,p])=>{ if(f[k]){ fall+=p; fl.push([n,p]); } });
+    if(f.big){ const p=+f.bigPrice||0; fall+=p; fl.push(["Lawn over 10,000 sq ft (walk-through)",p]); } }
+  if(l.on && l.pkg){ const P=SSA_PKG.find(x=>x.k===l.pkg), wl=l.pkg==="showcase"&&!north&&l.westland; const p = north?P.n2:(wl?P.wl:P.sw);
+    lights+=p; ll.push([`${P.n} (${north?"North":(wl?"Westland":"South / Westland")})`,p]);
+    SSA_ADDONS.forEach(([k,n,pr])=>{ if(l[k]>0){ lights+=l[k]*pr; ll.push([`${n} × ${l[k]}`,l[k]*pr]); } });
+    SSA_L_ADJ.forEach(([k,n,pr])=>{ if(!l[k]) return; if(k==="two"&&l.pkg==="showcase") return; if(k==="twoShow"&&l.pkg!=="showcase") return; lights+=pr; ll.push([n,pr]); });
+    if(l.ft>0){ lights+=l.ft*6; ll.push([`Roofline beyond 120 ft: ${l.ft} ft × $6`,l.ft*6]); } }
+  if(s.on && s.lot){ const P=SSA_SNOW.find(x=>x.k===s.lot); snow=north?P.n2:P.sw; sl.push([`${P.n} (${north?"North":"South / Westland"})`,snow]); }
+  return { fall, lights, snow, total:fall+lights+snow, fl, ll, sl };
+}
+// Newest signed, not voided agreement on a client, and whether a seasonal service is still not covered by one.
+function ssaSigned(c){ return Object.entries(c.contracts||{}).filter(([,m])=>m.tpl==="seasonal"&&m.status==="signed"&&!m.voided).sort((a,b)=>b[1].signedAt-a[1].signedAt)[0]||null; }
+function ssaOpen(c, sid){ const sg=ssaSigned(c), cov=(sg&&sg[1].covers)||{}; return svcList(c).some(s=>SSA_TYPES.includes(s.type) && (!sid||s.sid===sid) && !cov[s.type]); }
+function ssaRowHtml(c, dirty){
+  const sg=ssaSigned(c), open=ssaOpen(c), has=svcList(c).some(s=>SSA_TYPES.includes(s.type));
+  const covered = sg ? SSA_TYPES.filter(t=>(sg[1].covers||{})[t]).map(t=>SERVICE_TYPES[t].label).join(", ") : "";
+  return `<div class="ctr"><div class="t"><b>${SSA_NAME}</b><div class="meta">${sg ? "Covers: "+esc(covered)+(open?". A service was added since; sign a new agreement to cover it.":"") : "Fall cleanup, Christmas lights and snow. You choose the services and options, the customer only signs."}${c.ssaDraft&&!sg?" Setup saved, not signed.":""}</div></div>
+    ${sg?`<span class="pill signed">Signed ${fmtDate(new Date(sg[1].signedAt).toLocaleDateString("en-CA",{timeZone:TZ}))}</span><button type="button" class="small" data-view-ctr="${sg[0]}">View</button>`:(has?`<span class="pill unsigned">Not signed</span>`:"")}
+    <button type="button" class="small ${sg&&!open?"":"primary"}" data-ssa="1" ${dirty?"disabled":""}>${sg?"New agreement":"Set up and sign"}</button></div>`;
+}
+// Tables in contract text: lines starting with "|". "|=" is a header row, "|+" a total row.
+function ssaTable(lines, inline){
+  return "<table>"+lines.map(l=>{ const kind=l[1]==="="?"h":l[1]==="+"?"t":""; const cells=l.replace(/^\|[=+]?/,"").split(/\s*\|\s*/).map(x=>x.trim());
+    return `<tr${kind==="t"?' class="tot"':""}>`+cells.map((x,i)=> kind==="h" ? `<th>${inline(x)}</th>` : `<td${i===cells.length-1&&/^[+]?\$/.test(x)?' class="r"':""}>${inline(x)}</td>`).join("")+"</tr>"; }).join("")+"</table>";
+}
+// The agreement as text, holding only what applies to the services chosen. Article numbers are kept as in
+// the full agreement so the cross references inside the clauses (Section 1.3, 6.1, 7.5) stay true.
+function ssaText(c, S, k, agNo){
+  const t = v => String(v||"").replace(/[|\r\n]+/g," ").trim();
+  const on = { fall:S.fall.on, lights:S.lights.on, snow:S.snow.on }, termFall = on.fall || ssaShowcaseFall(S);
+  const o=[]; const P = (...x) => o.push(x.join("\n"));
+  const lineTable = (rows, label, total) => ["|= Item | Price", ...rows.map(r=>`| ${r[0]} | ${money(r[1])||"$0"}`), `|+ ${label} | ${money(total)||"$0"}`].join("\n");
+  P("# SEASONAL SERVICES AGREEMENT");
+  P([termFall&&"Fall Cleanup", on.lights&&"Holiday Lighting", on.snow&&"Snow & Ice Removal"].filter(Boolean).join(" • "));
+  P(`**Agreement No.:** ${agNo}`, `**Effective Date:** ${fmtLong(today())}`);
+  P("This Seasonal Services Agreement is entered into by and between **Mangiapane Brothers LLC** and the customer identified below. The Company and the Customer are each a “Party” and together the “Parties.” The Parties agree as follows:");
+  P("## Article 1: Parties, Property and Term");
+  P("|= | Customer Information", `| Name | ${t(c.name)}`, `| Address | ${t(c.address)}`, `| Phone | ${t(c.phone)}`, `| Email | ${t(S.email)||"Not provided"}`);
+  P(`**1.1 Service Property.** The services will be performed at: ${t(S.prop)}`);
+  P(`**1.2 Property Type.** ${t(S.ptype)}`);
+  P(`**1.3 Service Areas.** Driveway, walks, steps, public sidewalk, parking areas and other areas to be serviced: ${t(S.areas)||"As walked with the Customer at signing"}`);
+  P("**1.4 Term.** This Agreement begins on the Effective Date and covers the season(s) below. It ends when the last selected season ends unless renewed in writing.");
+  P("|= Service | Timeframe", ...[termFall&&"fall", on.lights&&"lights", on.snow&&"snow"].filter(Boolean).map(x=>`| ${SSA_TERM[x][0]} | ${SSA_TERM[x][1]}`));
+  P("## Article 2: Services and Pricing");
+  P("The Customer purchases only the services marked below at the prices stated. Applicable Michigan sales tax will be added where required by law. If payment is provided by card, the Customer will pay the additional service charge.");
+  if(on.fall){ P("### 2.1 Fall Cleanup"); P(`**Full Fall Cleanup.** ${SSA_FALL_DESC}`); P(lineTable(k.fl,"Fall Cleanup Total",k.fall)); }
+  if(on.lights){ const pk=SSA_PKG.find(x=>x.k===S.lights.pkg);
+    P("### 2.2 Christmas Lights"); P(`**${pk.n}.** ${pk.d}`); P(SSA_LIGHTS_NOTE); P(`**Light Color:** ${t(S.lights.color)}`); P(lineTable(k.ll,"Christmas Lights Total",k.lights)); }
+  if(on.snow){ P("### 2.3 Snow Removal"); P(lineTable(k.sl,"Snow Removal Total",k.snow)); }
+  for(const A of SSA_ART){
+    if(A.svc && !(A.svc==="fall" ? termFall : on[A.svc])) continue;
+    P(`## Article ${A.n}: ${A.title}`);
+    if(A.n===7) P("The Customer shall:");
+    for(const [num,head,body] of A.items){
+      if(num==="6.2"){ P(`**6.2 Payment Methods.** Cash, Check, Credit/Debit Card, Electronic transfer.`); P("Card payments and other electronic transfers may be subject to a 3% processing fee."); continue; }
+      P(head ? `**${num} ${head}** ${body}` : `**${num}** ${body}`);
+    }
+    if(A.n===4) P(`**4.8 Season Limit.** The season price covers up to sixteen (${SSA_PUSHES}) snow removal visits. Each visit after the sixteenth will be invoiced at the per-push rate of ${money(ssaPerPush(S))} for the Property’s area and lot type. Each pass counts as one visit, so a storm cleared in two passes under Section 4.2 counts as two visits.`);
+    if(A.n===6) P("|= Summary | Amount", ...[on.fall&&["2.1 Fall Cleanup",k.fall], on.lights&&[`2.2 Christmas Lights (${t(S.lights.color)})`,k.lights], on.snow&&["2.3 Snow Removal",k.snow]].filter(Boolean).map(r=>`| ${r[0]} | ${money(r[1])||"$0"}`), `|+ Total due at signing (full deposit, Section 6.1) | ${money(k.total)||"$0"}`);
+    if(A.n===7) P(`**Pre-existing conditions noted at signing:** ${t(S.pre)||"None noted"}`);
+  }
+  P("## Signatures");
+  P("IN WITNESS WHEREOF, the Parties have executed this Agreement as of the dates below.");
+  P(`**${SSA_CANCEL_STATEMENT}**`);
+  P("**If you cancel within that period, all payments you have made will be refunded in full within 10 business days after the Company receives your cancellation notice.**");
+  return o.join("\n\n");
+}
+
+// Snow: the season price covers this many visits; each one after is invoiced at the per-push rate for the area and lot.
+const SSA_PUSHES = 16;
+const ssaPerPush = S => { const P=SSA_SNOW.find(x=>x.k===S.snow.lot); return P ? (S.zone==="north"?P.ppN:P.ppSw) : 0; };
+// Three-day right to cancel (FTC Cooling-Off Rule, 16 CFR 429; Michigan Home Solicitation Sales Act, MCL 445.113).
+const SSA_SELLER = "Mangiapane Brothers LLC";
+const SSA_SELLER_ADDR = "3540 Thorn Tree Ct., Ann Arbor, MI 48105";
+const SSA_SELLER_EMAIL = "admin@mangbrothers.com";
+const SSA_SELLER_PHONE = "734-450-2400";
+const SSA_CANCEL_STATEMENT = "You, the buyer, may cancel this transaction at any time prior to midnight of the third business day after the date of this transaction. See the attached notice of cancellation form for an explanation of this right. Additionally, the seller is prohibited from having an independent courier service or other third party pick up your payment at your residence before the end of the 3-business-day period in which you can cancel the transaction.";
+// Business days: every day except Sundays and federal holidays.
+function ssaHoliday(y, m, d){
+  const dow = new Date(Date.UTC(y,m-1,d)).getUTCDay(), nth = Math.ceil(d/7), last = d+7 > new Date(Date.UTC(y,m,0)).getUTCDate();
+  if((m===1&&d===1)||(m===6&&d===19)||(m===7&&d===4)||(m===11&&d===11)||(m===12&&d===25)) return true;
+  if(dow===1 && ((m===1&&nth===3)||(m===2&&nth===3)||(m===5&&last)||(m===9&&nth===1)||(m===10&&nth===2))) return true;
+  return dow===4 && m===11 && nth===4;
+}
+function ssaCancelBy(iso){
+  const [y,m,d]=iso.split("-").map(Number); const t=new Date(Date.UTC(y,m-1,d)); let n=0;
+  while(n<3){ t.setUTCDate(t.getUTCDate()+1); if(t.getUTCDay()!==0 && !ssaHoliday(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())) n++; }
+  return t.toISOString().slice(0,10);
+}
+function ssaNotice(agNo){
+  const d=today();
+  return ["## NOTICE OF CANCELLATION",
+    `**Date of transaction:** ${fmtLong(d)}`+"\n"+`**Agreement No.:** ${agNo}`,
+    "You may cancel this transaction, without any penalty or obligation, within three business days from the above date.",
+    "If you cancel, any property traded in, any payments made by you under the contract or sale, and any negotiable instrument executed by you will be returned within 10 business days following receipt by the seller of your cancellation notice, and any security interest arising out of the transaction will be cancelled.",
+    "If you cancel, you must make available to the seller at your residence, in substantially as good condition as when received, any goods delivered to you under this contract or sale; or you may, if you wish, comply with the instructions of the seller regarding the return shipment of the goods at the seller’s expense and risk.",
+    "If you do make the goods available to the seller and the seller does not pick them up within 20 days of the date of your notice of cancellation, you may retain or dispose of the goods without any further obligation. If you fail to make the goods available to the seller, or if you agree to return the goods to the seller and fail to do so, then you remain liable for performance of all obligations under the contract.",
+    `To cancel this transaction, mail or deliver a signed and dated copy of this cancellation notice or any other written notice to **${SSA_SELLER}**, at **${SSA_SELLER_ADDR}**, or by email to **${SSA_SELLER_EMAIL}**, not later than midnight of **${fmtLong(ssaCancelBy(d))}**.`,
+    `Questions about cancelling: call ${SSA_SELLER} at **${SSA_SELLER_PHONE}**.`,
+    "**I hereby cancel this transaction.**",
+    "Date: ______________________________"+"\n"+"Buyer’s signature: ______________________________"].join("\n\n");
+}
+
+// Step 1, admin: choose services and options.
+function openSeasonal(clientId){
+  askDriveToken().catch(()=>{});
+  const c=clients[clientId]; if(!c) return toast("Save the client first.");
+  if(dialogDirty()) return toast("Save the client first, then open the agreement.");
+  const base=ssaBlank(c), d=c.ssaDraft||{};
+  const S={ ...base, ...d, fall:{...base.fall,...(d.fall||{})}, lights:{...base.lights,...(d.lights||{})}, snow:{...base.snow,...(d.snow||{})} };
+  if(!S.prop) S.prop=c.address||""; if(!S.email) S.email=c.email||"";
+  signCtx={ mode:"ssa-setup", clientId, S };
+  ssaSetup();
+  if(!$("#signDlg").open) $("#signDlg").showModal();
+  $("#signBody").scrollTop=0;
+}
+function ssaBarOff(){ const b=document.getElementById("ssaBar"); if(b) b.remove(); }
+$("#signDlg").addEventListener("close", ssaBarOff);
+function ssaSetup(){
+  const X=signCtx, S=X.S, c=clients[X.clientId]; X.mode="ssa-setup"; X.pad=null; ssaBarOff();
+  const ck=(id,label,on)=>`<label class="row ssack"><input type="checkbox" id="${id}" ${on?"checked":""}> <span>${label}</span></label>`;
+  $("#signTitle").textContent = SSA_NAME+": setup";
+  $("#signBody").innerHTML = `<div class="signpanel" id="ssaForm" style="margin-top:0">
+    <h4>${esc(c.name)}</h4>
+    <div class="meta">${esc(c.address||"No address on file")} · ${esc(c.phone||"no phone")}. These come from the client record; close this and edit the client to change them.</div>
+    <div class="grid2">
+      <div><label>Email for the customer's copy</label><input id="ss-email" type="email" value="${esc(S.email)}" placeholder="name@example.com" autocomplete="off"></div>
+      <div><label>Pricing area</label><select id="ss-zone">${opts(["south","north"],S.zone,{south:"South / Westland",north:"North"})}</select></div>
+      <div style="grid-column:1/-1"><label>Service property (1.1)</label><input id="ss-prop" value="${esc(S.prop)}"></div>
+      <div><label>Property type (1.2)</label><select id="ss-ptype">${opts(["Residential","Commercial","Multi-Unit / HOA"],S.ptype)}</select></div>
+      <div><label>Service areas (1.3)</label><input id="ss-areas" value="${esc(S.areas)}" placeholder="Driveway, front walk, steps, public sidewalk"></div>
+      <div style="grid-column:1/-1"><label>Pre-existing conditions noted at signing (Article 7)</label><input id="ss-pre" value="${esc(S.pre)}" placeholder="Cracked apron, loose gutter on garage. Leave empty for none."></div>
+    </div>
+    <div class="sect">Services</div>
+    <div class="svc svcbar fall">${ck("ss-fall",`<b>Fall Cleanup</b> <span class="meta" id="ss-fall-p"></span>`,S.fall.on)}
+      <div id="ss-fall-box" class="ssabox">${SSA_FALL_ADJ.map(([k,n,p])=>ck("ss-f-"+k,`${n} +$${p}`,S.fall[k])).join("")}
+        <div class="row">${ck("ss-f-big","Lawn over 10,000 sq ft, walk-through price $",S.fall.big)}<input id="ss-f-bigp" type="number" inputmode="decimal" min="0" style="width:110px" value="${esc(S.fall.bigPrice)}"></div></div></div>
+    <div class="svc svcbar lights">${ck("ss-lights",`<b>Christmas Lights</b> <span class="meta" id="ss-lights-p"></span>`,S.lights.on)}
+      <div id="ss-lights-box" class="ssabox">
+        <div class="grid2"><div><label>Package</label><select id="ss-l-pkg"><option value="">Choose</option>${SSA_PKG.map(P=>`<option value="${P.k}"${S.lights.pkg===P.k?" selected":""}>${P.n} ($${P.sw.toLocaleString()} South, $${P.n2.toLocaleString()} North)</option>`).join("")}</select></div>
+          <div><label>Light color</label><select id="ss-l-color"><option value="">Choose</option>${opts(["Warm white","Multicolor"],S.lights.color)}</select></div></div>
+        <div id="ss-l-wl-row">${ck("ss-l-wl","Westland home: Showcase without Fall Cleanup, $1,160",S.lights.westland)}</div>
+        <label>Add-ons (quantity)</label>
+        <div class="row">${SSA_ADDONS.map(([k,n,p])=>`<span class="ssaqty"><input id="ss-a-${k}" type="number" inputmode="numeric" min="0" value="${S.lights[k]||0}"> ${n} $${p}</span>`).join("")}</div>
+        <div id="ss-la-two-row">${ck("ss-la-two","Two-story home +$150",S.lights.two)}</div>
+        <div id="ss-la-twoShow-row">${ck("ss-la-twoShow","Two-story home (Showcase) +$225",S.lights.twoShow)}</div>
+        ${ck("ss-la-steep","Steep roof over 7/12 pitch +$125",S.lights.steep)}
+        <div class="row"><span>Roofline beyond 120 ft, $6 per ft:</span><input id="ss-l-ft" type="number" inputmode="numeric" min="0" style="width:100px" value="${S.lights.ft||""}"><span>ft</span></div></div></div>
+    <div class="svc svcbar snow">${ck("ss-snow",`<b>Snow Removal</b> <span class="meta" id="ss-snow-p"></span>`,S.snow.on)}
+      <div id="ss-snow-box" class="ssabox"><label>Lot</label><select id="ss-s-lot"><option value="">Choose</option>${SSA_SNOW.map(P=>`<option value="${P.k}"${S.snow.lot===P.k?" selected":""}>${P.n} ($${P.sw} South, $${P.n2} North)</option>`).join("")}</select></div></div>
+    <div class="pstotal"><span>Total due at signing</span><b id="ss-total">$0</b></div>
+    <div class="warnline" id="ss-warn" hidden></div>
+    <div class="meta" id="ss-err" style="color:var(--red);font-weight:600;margin-top:8px"></div>
+    <div class="actions"><button type="button" class="left" id="ss-later">Save setup for later</button><button type="button" class="primary big" id="ss-go">Show agreement to customer</button></div>
+    <p class="meta" style="margin:8px 0 0">The customer sees only the services ticked here, with their terms, and signs at the bottom. Your signature is added when you lock it.</p>
+  </div>`;
+  const form=$("#ssaForm"); form.oninput=ssaSync; form.onchange=ssaSync; ssaSync();
+  $("#ss-later").onclick = async () => { ssaSync(); try{ await ssaSaveDraft(); toast("Setup saved on the client."); $("#signDlg").close(); }catch(e){ toast("Not saved: "+(e.code||e.message)); } };
+  $("#ss-go").onclick = () => { ssaSync(); const e=ssaErrors(); $("#ss-err").textContent = e.length ? "Still needed: "+e.join(", ")+"." : ""; if(!e.length) ssaShow(); };
+}
+function ssaSync(){
+  const X=signCtx; if(!X || X.mode!=="ssa-setup") return; const S=X.S, g=id=>document.getElementById(id), n=id=>Math.max(0,parseInt(g(id).value)||0);
+  S.email=g("ss-email").value.trim(); S.zone=g("ss-zone").value; S.prop=g("ss-prop").value.trim(); S.ptype=g("ss-ptype").value; S.areas=g("ss-areas").value.trim(); S.pre=g("ss-pre").value.trim();
+  S.fall.on=g("ss-fall").checked; SSA_FALL_ADJ.forEach(([k])=>S.fall[k]=g("ss-f-"+k).checked); S.fall.bigPrice=g("ss-f-bigp").value; S.fall.big=g("ss-f-big").checked;
+  S.lights.on=g("ss-lights").checked; S.lights.pkg=g("ss-l-pkg").value; S.lights.color=g("ss-l-color").value; S.lights.westland=g("ss-l-wl").checked;
+  SSA_ADDONS.forEach(([k])=>S.lights[k]=n("ss-a-"+k)); SSA_L_ADJ.forEach(([k])=>S.lights[k]=g("ss-la-"+k).checked); S.lights.ft=n("ss-l-ft");
+  S.snow.on=g("ss-snow").checked; S.snow.lot=g("ss-s-lot").value;
+  const k=ssaCalc(S), show=S.lights.pkg==="showcase";
+  g("ss-fall-box").hidden=!S.fall.on; g("ss-lights-box").hidden=!S.lights.on; g("ss-snow-box").hidden=!S.snow.on;
+  g("ss-l-wl-row").hidden=!(show && S.zone==="south"); g("ss-la-two-row").hidden=show; g("ss-la-twoShow-row").hidden=!show;
+  g("ss-fall-p").textContent = S.fall.on ? money(k.fall) : "$"+SSA_FALL[S.zone]; g("ss-lights-p").textContent = S.lights.on&&S.lights.pkg ? money(k.lights) : ""; g("ss-snow-p").textContent = S.snow.on&&S.snow.lot ? money(k.snow) : "";
+  g("ss-total").textContent = money(k.total)||"$0";
+  const w=g("ss-warn"); const dbl = S.fall.on && ssaShowcaseFall(S);
+  w.hidden=!dbl; w.textContent = dbl ? "Showcase already includes a full Fall Cleanup. With Fall Cleanup also ticked, the customer is charged for it twice." : "";
+}
+function ssaErrors(){
+  const S=signCtx.S, e=[];
+  if(!S.prop) e.push("service property");
+  if(!S.fall.on && !S.lights.on && !S.snow.on) e.push("at least one service");
+  if(S.fall.on && S.fall.big && !(+S.fall.bigPrice>0)) e.push("walk-through price for the large lawn");
+  if(S.lights.on && !S.lights.pkg) e.push("lights package");
+  if(S.lights.on && !S.lights.color) e.push("light color");
+  if(S.snow.on && !S.snow.lot) e.push("snow lot type");
+  if(S.email && !/^\S+@\S+\.\S+$/.test(S.email)) e.push("a valid email, or leave it empty");
+  return e;
+}
+function ssaSaveDraft(){ const X=signCtx; return db.ref().update({ ["clients/"+X.clientId+"/ssaDraft"]: JSON.parse(JSON.stringify(X.S)), ["clients/"+X.clientId+"/updatedAt"]: Date.now(), ["clients/"+X.clientId+"/updatedBy"]: me.email }); }
+
+// Step 2, customer: read and sign.
+async function ssaShow(){
+  const X=signCtx, S=X.S, c=clients[X.clientId];
+  ssaSaveDraft().catch(()=>{});
+  const d=new Date(), ymd=today().replace(/-/g,"");
+  X.agNo = X.agNo || `MB-${ymd}-${Math.random().toString(36).slice(2,6).toUpperCase().padEnd(4,"X")}`;
+  X.k=ssaCalc(S); X.text=ssaText(c,S,X.k,X.agNo); X.notice=ssaNotice(X.agNo); X.mySig = X.mySig!==undefined ? X.mySig : await loadMySig();
+  if(signCtx!==X) return;
+  X.mode="sign"; X.kind="seasonal";
+  $("#signTitle").textContent = SSA_NAME;
+  $("#signBody").innerHTML = `
+    <div class="doc" id="docLive">${SSA_HEAD}${renderDocHtml(X.text,"view")}</div>
+    <div class="signpanel" id="ssaSignHere">
+      <h4>Customer signature</h4>
+      <p class="meta" style="margin:0 0 8px">Sign with a finger or Apple Pencil inside the box.</p>
+      <canvas class="pad" id="padClient"></canvas>
+      <div class="row" style="margin-top:8px"><button type="button" class="small" id="padClientClear">Clear signature</button><span class="meta" style="margin-left:auto">Date: <b>${esc(fmtLong(today()))}</b></span></div>
+      <label>Printed name</label><input id="sgName" value="${esc(c.name||"")}" autocomplete="off">
+    </div>
+    <div class="signpanel"><h4>Signed for Mangiapane Brothers LLC</h4><div id="sgCompany"></div></div>
+    <div class="doc ssanotice" id="docNotice">${renderDocHtml(X.notice,"view")}</div>
+    <div class="signpanel">
+      <div class="row"><button type="button" class="primary big" id="sgLock">Sign and lock</button><span class="meta" id="sgStatus"></span><button type="button" class="small" id="ssaBack" style="margin-left:auto">Back to setup</button></div>
+      <p class="meta" style="margin:8px 0 0">After locking, the agreement cannot be edited. A mistake is fixed by voiding it and signing again.</p>
+    </div>
+    `;
+  ssaBarOff(); const bar=document.createElement("div"); bar.className="ssabar"; bar.id="ssaBar";
+  bar.innerHTML=`<span>Total due at signing <b>${money(X.k.total)||"$0"}</b></span><button type="button" id="ssaToSign">Go to signature</button>`; $("#signDlg").appendChild(bar);
+  $("#signBody").scrollTop=0;
+  X.pad = makePad($("#padClient"));
+  $("#padClientClear").onclick = () => X.pad.clear();
+  $("#ssaToSign").onclick = () => $("#ssaSignHere").scrollIntoView({behavior:"smooth",block:"start"});
+  $("#ssaBack").onclick = () => ssaSetup();
+  renderCompanySig();
+  $("#sgLock").onclick = lockSeasonal;
+}
+async function lockSeasonal(){
+  const X=signCtx; if(!X || X.busy || X.kind!=="seasonal") return;
+  const c=clients[X.clientId], S=X.S, k=X.k, id=X.clientId;
+  if(X.pad.isEmpty()){ $("#padClient").scrollIntoView({block:"center"}); return toast("The customer has not signed."); }
+  const signerName=$("#sgName").value.trim(); if(!signerName){ $("#sgName").focus(); return toast("Type the customer's printed name."); }
+  let companySig = X.mySig?.data || null, saveSig=false;
+  if(!companySig){ if(!X.cpad || X.cpad.isEmpty()){ $("#padCompany").scrollIntoView({block:"center"}); return toast("Draw your company signature once."); } companySig=X.cpad.data(); saveSig=true; }
+  X.busy=true; $("#sgLock").disabled=true; $("#sgStatus").textContent="Saving…";
+  const now=Date.now(), incFall=ssaShowcaseFall(S) && !S.fall.on;
+  // Only the services chosen are stored.
+  const details = { agreementNo:X.agNo, zone:S.zone, propertyType:S.ptype, serviceProperty:S.prop, serviceAreas:S.areas, preExisting:S.pre, email:S.email, total:k.total };
+  if(S.fall.on) details.fall = { lines:k.fl, total:k.fall, options:{ two:S.fall.two, corner:S.fall.corner, oak:S.fall.oak, big:S.fall.big, bigPrice:S.fall.big?(+S.fall.bigPrice||0):0 } };
+  if(S.lights.on) details.lights = { lines:k.ll, total:k.lights, package:S.lights.pkg, color:S.lights.color, westland:S.zone==="south"&&S.lights.pkg==="showcase"&&S.lights.westland, includesFallCleanup:ssaShowcaseFall(S),
+    addons:Object.fromEntries(SSA_ADDONS.map(([a])=>[a,S.lights[a]||0]).filter(x=>x[1]>0)), options:{ two:S.lights.pkg!=="showcase"&&S.lights.two, twoShow:S.lights.pkg==="showcase"&&S.lights.twoShow, steep:S.lights.steep }, extraFeet:S.lights.ft||0 };
+  if(S.snow.on) details.snow = { lines:k.sl, total:k.snow, lot:S.snow.lot, includedPushes:SSA_PUSHES, perPushAfter:ssaPerPush(S) };
+  const summary = [S.fall.on&&"Fall Cleanup "+money(k.fall), S.lights.on&&"Christmas Lights "+money(k.lights), S.snow.on&&"Snow Removal "+money(k.snow)].filter(Boolean).join(" · ");
+  const payload = JSON.parse(JSON.stringify({ v:1, kind:"seasonal", clientId:id, tpl:"seasonal", tplName:SSA_NAME, tplVersion:SSA_VERSION, sample:false, sid:"", serviceType:"seasonal",
+    serviceSummary:summary, amount:k.total, agreementNo:X.agNo, details, text:X.text, notice:X.notice, cancelBy:ssaCancelBy(today()), choices:{}, initials:{}, signerName, signedDate:today(), signedAt:now, signature:X.pad.data(),
+    companySig, companySigner: X.mySig?.name || me.displayName || me.email, witness:me.email, device:navigator.userAgent.slice(0,300) }));
+  const hash = await sha256(canon(payload));
+  const cid = db.ref("contracts/"+id).push().key;
+  const covers = {}; if(S.fall.on||incFall) covers.fall=true; if(S.lights.on) covers.lights=true; if(S.snow.on) covers.snow=true;
+  const upd = {
+    ["contracts/"+id+"/"+cid]: { ...payload, status:"signed", hash },
+    ["clients/"+id+"/contracts/"+cid]: { tpl:"seasonal", sid:"", name:SSA_NAME, sample:false, status:"signed", signedAt:now, covers, agreementNo:X.agNo, amount:k.total },
+    ["clients/"+id+"/ssaDraft"]: null,
+    ["clients/"+id+"/lastContactAt"]: now, ["clients/"+id+"/updatedAt"]: now, ["clients/"+id+"/updatedBy"]: me.email,
+    ["clientLog/"+id+"/"+db.ref("clientLog").push().key]: { text:`Signed ${SSA_NAME} ${X.agNo}: ${summary}. Total ${money(k.total)}.`, at:now, by:me.email, source:"contract" }
+  };
+  if(S.email && S.email!==(c.email||"")) upd["clients/"+id+"/email"]=S.email;
+  // The services on the client record follow the agreement, so the Fall, Lights and Snow tabs fill themselves.
+  const put = (type, fields, fresh, note) => { const e=Object.entries(c.services||{}).find(([,s])=>s.type===type), sid = e ? e[0] : "s"+now.toString(36)+type;
+    const all = { ...(e?{}:{ type, createdAt:now, ...fresh }), ...fields, notes: e&&e[1].notes && !String(e[1].notes).includes(note) ? e[1].notes+"; "+note : note };
+    for(const [f,v] of Object.entries(all)) upd[`clients/${id}/services/${sid}/${f}`]=v; };
+  const noteOf = lines => lines.map(r=>r[0]).join(", ")+` (${X.agNo})`;
+  if(S.fall.on) put("fall", { package:"Two passes", price:k.fall }, { route:"Route 1", pass1:false, pass2:false }, noteOf(k.fl));
+  else if(incFall) put("fall", { package:"Two passes" }, { route:"Route 1", price:0, pass1:false, pass2:false }, `Included in the Showcase lights package (${X.agNo})`);
+  if(S.lights.on) put("lights", { price:k.lights }, { install:"", takedown:"", gutters:false }, S.lights.color+": "+noteOf(k.ll));
+  if(S.snow.on) put("snow", { price:k.snow }, { crew:"", start:"2026-11-01", end:"2027-03-15" }, noteOf(k.sl));
+  if(LEAD_STAGES.includes(c.status)){ upd["clients/"+id+"/status"]="active"; if(!c.wonAt) upd["clients/"+id+"/wonAt"]=now; }
+  if(saveSig) upd["adminSigs/"+mySigKey()] = { data:companySig, name:me.displayName||me.email, savedAt:now };
+  Object.assign(upd, qbCustomerRow(id));
+  try { await db.ref().update(upd); }
+  catch(e){ X.busy=false; $("#sgLock").disabled=false; $("#sgStatus").textContent=""; return toast("Not saved. Check the connection and press Sign and lock again. ("+(e.code||e.message)+")"); }
+  toast("Signed and locked."); ssaBarOff();
+  const rec={ ...payload, status:"signed", hash };
+  await viewContract(id, cid, rec);
+  driveStatus(id, cid, rec, true);
+  openPaySheet(id, cid, rec);
+}
 
 // ---------- import ----------
 const IMPORT_FIELDS = [
