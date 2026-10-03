@@ -116,7 +116,7 @@
   dialog{border:1px solid var(--line);border-radius:10px;padding:0;width:min(620px,94vw);box-shadow:var(--shadow);background:var(--card);color:var(--ink)}
   dialog.big{width:min(760px,94vw);max-height:94vh;flex-direction:column;overflow:hidden}
   dialog.big[open]{display:flex}
-  dialog.big .body{flex:1;min-height:0;overflow:auto;padding-bottom:0}
+  dialog.big .body{flex:1 1 auto;min-height:0;overflow:auto;padding-bottom:0}
   dialog.big .actions{position:sticky;bottom:0;background:var(--card);padding:12px 0 18px;margin-top:12px;border-top:1px solid var(--line)}
   dialog::backdrop{background:rgba(10,16,28,.45)}
   dialog .body{padding:18px;max-height:calc(94vh - 2px);overflow:auto}
