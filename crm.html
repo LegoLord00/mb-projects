@@ -240,6 +240,7 @@
   .ssabar b{font-size:22px;margin-left:8px}
   .ssabar button{background:#fff;color:#1f3864;border:0;font-weight:700;min-height:44px;padding:8px 16px;white-space:nowrap;flex:none}
   .ssahead{gap:12px} .ssahead span{text-align:right}
+  .ssaname{margin-top:12px;font-size:16px;color:var(--ink)} .ssaname b{font-size:18px}
   .ssanotice{border:2px dashed #16233a;border-radius:6px;padding:16px 18px;margin-top:22px;break-inside:avoid}
   .doc.ssanotice{max-width:760px;margin:16px auto 0;border:2px dashed #16233a}
   .ssanotice h3{margin-top:0;text-align:center;letter-spacing:.04em}
@@ -1807,21 +1808,21 @@ async function ssaShow(){
       <p class="meta" style="margin:0 0 8px">Sign with a finger or Apple Pencil inside the box.</p>
       <canvas class="pad" id="padClient"></canvas>
       <div class="row" style="margin-top:8px"><button type="button" class="small" id="padClientClear">Clear signature</button><span class="meta" style="margin-left:auto">Date: <b>${esc(fmtLong(today()))}</b></span></div>
-      <label>Printed name</label><input id="sgName" value="${esc(c.name||"")}" autocomplete="off">
+      <div class="ssaname">Printed name: <b>${esc(c.name||"")}</b></div>
     </div>
     <div class="signpanel"><h4>Signed for Mangiapane Brothers LLC</h4><div id="sgCompany"></div></div>
-    <div class="doc ssanotice" id="docNotice">${renderDocHtml(X.notice,"view")}</div>
     <div class="signpanel">
       <div class="row"><button type="button" class="primary big" id="sgLock">Sign and lock</button><span class="meta" id="sgStatus"></span><button type="button" class="small" id="ssaBack" style="margin-left:auto">Back to setup</button></div>
       <p class="meta" style="margin:8px 0 0">After locking, the agreement cannot be edited. A mistake is fixed by voiding it and signing again.</p>
     </div>
+    <div class="doc ssanotice" id="docNotice">${renderDocHtml(X.notice,"view")}</div>
     `;
   ssaBarOff(); const bar=document.createElement("div"); bar.className="ssabar"; bar.id="ssaBar";
   bar.innerHTML=`<span>Total due at signing <b>${money(X.k.total)||"$0"}</b></span><button type="button" id="ssaToSign">Go to signature</button>`; $("#signDlg").appendChild(bar);
   $("#signBody").scrollTop=0;
   X.pad = makePad($("#padClient"));
   $("#padClientClear").onclick = () => X.pad.clear();
-  $("#ssaToSign").onclick = () => $("#ssaSignHere").scrollIntoView({behavior:"smooth",block:"start"});
+  $("#ssaToSign").onclick = () => $("#ssaSignHere").scrollIntoView({behavior:"smooth",block:"end"});
   $("#ssaBack").onclick = () => ssaSetup();
   renderCompanySig();
   $("#sgLock").onclick = lockSeasonal;
@@ -1830,7 +1831,7 @@ async function lockSeasonal(){
   const X=signCtx; if(!X || X.busy || X.kind!=="seasonal") return;
   const c=clients[X.clientId], S=X.S, k=X.k, id=X.clientId;
   if(X.pad.isEmpty()){ $("#padClient").scrollIntoView({block:"center"}); return toast("The customer has not signed."); }
-  const signerName=$("#sgName").value.trim(); if(!signerName){ $("#sgName").focus(); return toast("Type the customer's printed name."); }
+  const signerName=String(c.name||"").trim(); if(!signerName) return toast("The client record has no name. Close this, add the name, and open the agreement again.");
   let companySig = X.mySig?.data || null, saveSig=false;
   if(!companySig){ if(!X.cpad || X.cpad.isEmpty()){ $("#padCompany").scrollIntoView({block:"center"}); return toast("Draw your company signature once."); } companySig=X.cpad.data(); saveSig=true; }
   X.busy=true; $("#sgLock").disabled=true; $("#sgStatus").textContent="Saving…";
