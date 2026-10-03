@@ -365,7 +365,7 @@
     </div>
     <div class="row" style="margin-top:10px;gap:18px">
       <label class="row" style="margin:0;color:var(--ink);font-size:14px"><input type="checkbox" id="tplActive"> Active (assigned to clients)</label>
-      <label class="row" style="margin:0;color:var(--ink);font-size:14px"><input type="checkbox" id="tplSample"> Sample text (not for real clients)</label>
+      <input type="checkbox" id="tplSample" hidden>
     </div>
     <label>Contract text</label>
     <div class="row" style="margin-bottom:6px"><input type="file" id="tplFile" accept=".txt,.md,text/plain,text/markdown" style="width:auto"><span class="meta">Upload a .txt or .md file, or paste below.</span><button type="button" class="small" id="tplPreviewBtn" style="margin-left:auto">Preview</button></div>
@@ -463,101 +463,6 @@ const SERVICE_TYPES = {
 };
 // ================================================================
 
-// ===== SAMPLE CONTRACTS: loaded once into an empty Contracts list. Replace the text in More > Contracts. =====
-const SAMPLE_TEMPLATES = {
-  tpl_fall: { name:"Fall Cleanup Agreement", services:{fall:true}, active:true, sample:true, version:1, body:
-`# SAMPLE Fall Cleanup Agreement
-
-**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
-
-This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
-
-## Property
-{{client.address}}
-Phone: {{client.phone}}
-Email: {{client.email}}
-
-## Service
-Fall cleanup, {{service.package}}. On each pass the Company removes leaves from the lawn and beds and clears the gutters.
-
-Price: **{{service.price}}** for the season.
-
-## Choices
-[[check:haul|Haul all leaves off the property]]
-[[check:beds|Cut back perennials in the beds on the last pass]]
-[[check:photos|The Company may photograph the property for its records]]
-
-## Terms
-1. Pass dates depend on leaf drop and weather. The Company will text the Client the day before each pass.
-2. Payment is due at signing unless the Company agrees to invoice.
-3. The Client keeps gates unlocked and pets inside on service days.
-4. Either party may cancel before the first pass by phone or email.
-
-Client initials to confirm the terms above: [[initial:terms]]
-
-Signed on {{today}}.` },
-  tpl_snow: { name:"Seasonal Snow Agreement", services:{snow:true}, active:true, sample:true, version:1, body:
-`# SAMPLE Seasonal Snow Removal Agreement
-
-**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
-
-This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
-
-## Property
-{{client.address}}
-Phone: {{client.phone}}
-
-## Season and price
-The season runs from {{service.start}} through {{service.end}}. The seasonal price is **{{service.price}}**, no matter how many times it snows.
-
-## Service
-The Company plows the driveway and clears the front walk after each snowfall of two inches or more.
-
-## Choices
-[[check:salt|Salt the walk and driveway apron after each visit]]
-[[check:mailbox|Clear the path to the mailbox]]
-[[check:markers|The Company may place driveway markers before the first snow]]
-
-## Terms
-1. The Company is not responsible for damage to items left in the driveway or hidden under snow.
-2. Visits begin once snowfall stops or reaches two inches, whichever comes first.
-3. Payment is due at signing unless the Company agrees to invoice.
-
-Client initials to confirm the terms above: [[initial:terms]]
-
-Signed on {{today}}.` },
-  tpl_lights: { name:"Christmas Lights Agreement", services:{lights:true}, active:true, sample:true, version:1, body:
-`# SAMPLE Christmas Lights Agreement
-
-**SAMPLE TEXT FOR TESTING ONLY. This is not a real contract. Do not sign it with a client.**
-
-This agreement is between Mangiapane Brothers Lawn and Snow LLC ("the Company") and {{client.name}} ("the Client").
-
-## Property
-{{client.address}}
-Phone: {{client.phone}}
-
-## Service
-Install on {{service.install}}. Takedown on {{service.takedown}}.
-
-Price: **{{service.price}}**, covering install, service calls for outages during the season, and takedown.
-
-## Choices
-[[check:timer|Install a timer on the outdoor outlet]]
-[[check:store|The Company stores the lights until next season]]
-[[check:photos|The Company may photograph the display for its marketing]]
-
-## Terms
-1. The Client provides a working outdoor outlet.
-2. The Company repairs outages within two business days of a call.
-3. Payment is due at signing unless the Company agrees to invoice.
-
-Client initials to confirm the terms above: [[initial:terms]]
-
-Signed on {{today}}.` }
-};
-// ================================================================
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -643,14 +548,8 @@ function attach(){
   refs.t.on("value", s => { templates = s.val()||{}; render(); if(openId) renderContracts(); });
   refs.q.on("value", s => { qbRows = s.val()||{}; if(view==="tools") render(); });
   refs.c.once("value").then(autoPurge);
-  refs.t.once("value").then(s => { if(!s.exists()) seedTemplates(); });
 }
 function detach(){ Object.values(refs).forEach(r => r && r.off()); }
-function seedTemplates(){
-  const now=Date.now(), upd={};
-  for(const [id,t] of Object.entries(SAMPLE_TEMPLATES)) upd["contractTemplates/"+id] = {...t, createdAt:now, updatedAt:now, updatedBy:me.email};
-  return db.ref().update(upd);
-}
 // Records saved before phone keys existed get one, plus a phone index entry, once.
 function backfillPhones(){
   const upd={};
@@ -755,7 +654,7 @@ function contractNeeds(c){
   const out=[]; const mir=c.contracts||{};
   for(const s of svcList(c)) for(const [tid,t] of Object.entries(templates)){
     if(tid.startsWith("_")) continue;
-    if(SSA_TYPES.includes(s.type)) continue; // covered by the Seasonal Services Agreement
+    if(SSA_TYPES.includes(s.type) || t.sample) continue; // seasonal services use the Seasonal Services Agreement; old sample templates are ignored
     if(t.active===false || !(t.services||{})[s.type]) continue;
     const signed = Object.entries(mir).filter(([,m])=>m.tpl===tid && m.sid===s.sid && m.status==="signed" && !m.voided).sort((a,b)=>b[1].signedAt-a[1].signedAt)[0] || null;
     out.push({tid, t, sid:s.sid, s, signed});
@@ -1496,16 +1395,16 @@ function driveNag(){
 // ---------- Contracts view: templates and your countersignature ----------
 let tplEditing=null;
 function renderContractsView(m){
-  const list=Object.entries(templates).filter(([id])=>!id.startsWith("_")).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
-  const signedCount = live().reduce((n,[,c])=>n+Object.values(c.contracts||{}).filter(x=>x.status==="signed"&&!x.voided&&!x.sample).length,0);
-  m.innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Contract templates</h2><button class="primary" id="tplNew">+ New template</button></div>
-    <p class="meta">A template is assigned automatically to every client who has one of its services. Fall cleanup, Christmas lights and snow use the built-in Seasonal Services Agreement instead (open a client, Contracts, Set up and sign); templates for those three services are ignored. The client's name, address, price, and dates fill in when the contract opens. ${signedCount} real contracts signed so far.</p>
-    ${list.some(([,t])=>t.sample&&t.active!==false)?`<div class="warnline">The SAMPLE templates are placeholders. Replace their text with the real contracts before any real client signs. Have a lawyer read the real text once.</div>`:""}
-    <table style="margin-top:8px"><thead><tr><th>Template</th><th>Services</th><th>Version</th><th>Status</th><th></th></tr></thead><tbody>
-    ${list.map(([id,t])=>`<tr><td><b>${esc(t.name)}</b>${t.sample?' <span class="pill sample">SAMPLE</span>':""}<div class="meta">updated ${fmtStamp(t.updatedAt)}${t.updatedBy?" by "+esc(t.updatedBy.split("@")[0]):""}</div></td>
+  const list=Object.entries(templates).filter(([id,t])=>!id.startsWith("_") && !t.sample).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||""));
+  const signedCount = live().reduce((n,[,c])=>n+Object.values(c.contracts||{}).filter(x=>x.tpl==="seasonal"&&x.status==="signed"&&!x.voided).length,0);
+  m.innerHTML = `<div class="card"><h2>${SSA_NAME}</h2>
+    <p class="meta">The agreement for fall cleanup, Christmas lights and snow. To sign one, open a client, go to Contracts, and tap Set up and sign. ${signedCount} signed so far.</p></div>
+    ${list.length?`<div class="card"><div class="row"><h2 style="flex:1;margin:0">Other contracts</h2><button class="primary" id="tplNew">+ New contract</button></div>
+    <table style="margin-top:8px"><thead><tr><th>Contract</th><th>Services</th><th>Version</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.map(([id,t])=>`<tr><td><b>${esc(t.name)}</b><div class="meta">updated ${fmtStamp(t.updatedAt)}${t.updatedBy?" by "+esc(t.updatedBy.split("@")[0]):""}</div></td>
       <td>${Object.keys(t.services||{}).map(k=>`<span class="tag ${k}">${esc(SERVICE_TYPES[k]?.label||k)}</span>`).join(" ")}</td><td>${t.version||1}</td><td>${t.active===false?'<span class="pill paused">Off</span>':'<span class="pill active">Active</span>'}</td>
-      <td class="num"><button class="small" data-tpl="${id}">Edit</button></td></tr>`).join("") || `<tr><td colspan="5" class="empty">No templates yet.</td></tr>`}
-    </tbody></table></div>
+      <td class="num"><button class="small" data-tpl="${id}">Edit</button></td></tr>`).join("")}
+    </tbody></table></div>`:""}
     <div class="card"><h2>Google Drive copies</h2>${(()=>{ const n=driveMissing().length; return `<p class="meta">Every signed contract is also saved as a PDF and an exact record in your Google Drive folder "${esc(DRIVE_ROOT_NAME)}", one folder per client.</p>` +
       (n ? `<div class="warnline">${n} signed contract${n===1?" is":"s are"} not in Google Drive yet. <button class="small primary" id="driveAll">Save to Drive</button></div>` : `<p class="meta">All signed contracts are in Google Drive.</p>`); })()}</div>
     <div class="card"><h2>Ways to pay</h2><p class="meta">Shown to the client right after signing. Everything is paid in person, at the door. Zelle, check and cash come first with no fee; Venmo, PayPal and card show the price with their fee added. Leave a line empty to hide that option (check and card always show).</p>
@@ -1521,7 +1420,8 @@ function renderContractsView(m){
         <div style="grid-column:1/-1"><label>Cash instructions (leave empty to hide cash)</label><input id="piCash" value="${esc(payInfo().cashNote)}"></div>
       </div>
       <div class="actions"><button class="primary" id="piSave">Save ways to pay</button></div></div>
-    <div class="card"><h2>Your countersignature</h2><p class="meta">Drawn once and applied to every contract you lock. Each admin keeps his own.</p><div id="mySigBox" class="meta">Loading…</div></div>`;
+    <div class="card"><h2>Your countersignature</h2><p class="meta">Drawn once and applied to every contract you lock. Each admin keeps his own.</p><div id="mySigBox" class="meta">Loading…</div></div>
+    ${list.length?"":`<p class="meta" style="margin:0 2px 16px"><button class="link" id="tplNew">Add a contract for another service (lawn, landscaping)</button></p>`}`;
   $("#tplNew").onclick = () => openTemplate(null);
   $("#piSave").onclick = () => { const pct=(id,max)=>Math.min(max,Math.max(0,+$(id).value||0));
     commit("Saved ways to pay", { "contractTemplates/_payInfo": { zelle:$("#piZelle").value.trim(), checkPayable:$("#piPayable").value.trim()||COMPANY, cashNote:$("#piCash").value.trim(), venmo:$("#piVenmo").value.trim(), paypal:$("#piPaypal").value.trim(), venmoFee:pct("#piVenmoFee",10), paypalFee:pct("#piPaypalFee",10), cardFee:pct("#piCardFee",3), cardNote:$("#piCard").value.trim(), updatedAt:Date.now(), updatedBy:me.email } }); };
