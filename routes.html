@@ -96,6 +96,8 @@
   .daycol h3{margin:0 0 6px}
   .rowlink{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);cursor:pointer}
   img.photo{max-width:100%;border-radius:var(--r)}
+  .mapbtn{display:inline-block;padding:7px 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--accent);color:var(--accent-ink) !important;font-weight:650;font-size:14px;text-decoration:none;cursor:pointer}
+  button.mapbtn{background:var(--card);color:var(--ink) !important}
   .viewas{width:auto;margin-left:auto;font-size:13px;padding:5px 8px}
   .demo button{margin-left:8px}
   .demo{background:var(--amber-soft);color:var(--amber);padding:6px 12px;font-size:13px;text-align:center}
@@ -287,7 +289,11 @@ const flyerOf = r => r.flyer || r.name || "";
 function hoursOn(r,d){ if(!r.start || d<r.start || d>(r.end||r.start)) return 0; if(r.days) return Number(r.days[d])||0;
   let n=0; for(let x=r.start; x<=(r.end||r.start); x=addDays(x,1)){ const w=pd(x).getUTCDay(); if(w!==0&&w!==6) n++; } return (Number(r.doors)||0)/PACE/(n||1); }
 const hrs = n => (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,"");
-const startLink = a => !a||!a.start ? "" : `<a href="https://www.google.com/maps/search/?api=1&query=${a.startLat&&a.startLon?encodeURIComponent(a.startLat+","+a.startLon):encodeURIComponent(a.start)}" target="_blank" rel="noopener" data-stop>${esc(a.start)}</a>`;
+// Directions open Apple Maps on an iPhone, iPad or Mac, and Google Maps on anything else.
+const APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+const dirUrl = dest => APPLE ? "https://maps.apple.com/?dirflg=d&daddr="+encodeURIComponent(dest) : "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(dest);
+const midOf = s => { const g=parseGeo(s)[0]; if(!g||!g.length) return null; const m=g[Math.floor(g.length/2)]; return m[0]+","+m[1]; };
+const startLink = a => !a||!a.start ? "" : `<a href="${dirUrl(a.startLat&&a.startLon?a.startLat+","+a.startLon:a.start)}" target="_blank" rel="noopener" data-stop>${esc(a.start)}</a>`;
 const seatDoors = s => seatRoutes(s).reduce((n,[,r])=>n+(Number(r.doors)||0),0);
 // A light seat carries well under a full walker's share. It is the part-time or backup lane.
 function seatIsLight(s){ const all=seatList().map(seatDoors); const top=Math.max(0,...all); return top>0 && seatDoors(s) < top*0.5; }
@@ -417,12 +423,12 @@ function renderRoute(app){
   app.innerHTML=`<div class="bar"><button class="small" id="back">&#8249; Back</button><span class="date">${esc(r.name)}</span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>
     <div class="meta" style="margin:-6px 0 10px">${esc(a.name||"")} &middot; ${fmtRange(r.start,r.end)}${a.start?`<br>Start: ${startLink(a)}`:""} &middot; ${Number(r.doors||0).toLocaleString()} doors${r.note?"<br>"+esc(r.note):""}</div>
     <div id="mapSlot"></div>
-    <div class="bar"><button class="small" id="locate">Show where I am</button><span class="muted">Green is done. Tap a street on the map or in the list.</span></div>
+    <div class="bar"><button class="small" id="locate">Show where I am</button><span class="muted">Green is done. Tap the map for directions. Tap a street to check it off.</span></div>
     <ul class="streets">${st.map(s=>{ const k=c[s.id]; return `<li class="${k?"done":""}" data-s="${esc(s.id)}"><button class="tick" data-tick="${esc(s.id)}" aria-label="Mark ${esc(s.name)}" ${canCheck?"":"disabled"}>${k?"&#10003;":""}</button>
       <span class="nm"><b>${esc(s.name)}</b>${k?`<div class="muted">${fmtDay(k.date)} ${fmtTime(k.at)}${isAdmin?" &middot; "+esc(walkerName(k.by)):""}</div>`:""}${parseGeo(s).length?"":'<div class="muted">Not drawn on the map</div>'}</span>
       ${k&&k.photo?`<button class="iconbtn small" data-view="${esc(s.id)}">Photo</button>`:""}
       ${canCheck?`<label class="iconbtn small" style="margin:0;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink)">${k&&k.photo?"Retake":"Add photo"}<input type="file" accept="image/*" capture="environment" data-photo="${esc(s.id)}" hidden></label>`:""}
-      <a class="muted" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name+", "+(a.city||"Livonia")+", MI")}">Maps</a></li>`; }).join("")||'<li class="meta">No streets are loaded for this area yet.</li>'}</ul>`;
+      <a class="muted" target="_blank" rel="noopener" href="${dirUrl(midOf(s)||(s.name+", "+(a.city||"Livonia")+", MI"))}">Directions</a></li>`; }).join("")||'<li class="meta">No streets are loaded for this area yet.</li>'}</ul>`;
   $("#back").onclick=()=>{ openRoute=null; render(); };
   app.querySelectorAll("[data-tick]").forEach(b=>b.onclick=()=>toggleStreet(id,b.dataset.tick));
   app.querySelectorAll("[data-photo]").forEach(i=>i.onchange=()=>i.files[0]&&addPhoto(id,i.dataset.photo,i.files[0]));
@@ -435,13 +441,21 @@ function drawMap(id, st, c, canCheck){
   if(!mapEl){ mapEl=document.createElement("div"); mapEl.id="mapEl"; }
   $("#mapSlot").appendChild(mapEl);
   if(!map){ map=L.map(mapEl,{zoomControl:true}); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map); layer=L.layerGroup().addTo(map); }
-  layer.clearLayers(); const all=[];
+  layer.clearLayers(); const all=[]; map.closePopup();
+  map.off("click"); map.on("click",e=>mapPopup(e.latlng,"This spot",null));
   st.forEach(s=>{ const segs=parseGeo(s); if(!segs.length) return; const done=!!c[s.id];
     const pl=L.polyline(segs,{color:done?"#1c7a4c":"#c0392b",weight:done?6:5,opacity:done?.9:.75}).addTo(layer);
-    pl.bindTooltip(s.name); if(canCheck) pl.on("click",()=>toggleStreet(id,s.id)); segs.forEach(g=>g.forEach(pt=>all.push(pt))); });
+    pl.bindTooltip(s.name); pl.on("click",e=>{ L.DomEvent.stopPropagation(e); mapPopup(e.latlng, s.name, canCheck?{done, go:()=>toggleStreet(id,s.id)}:null); }); segs.forEach(g=>g.forEach(pt=>all.push(pt))); });
   map.invalidateSize();
   if(fitFor!==id && all.length){ map.fitBounds(L.latLngBounds(all),{padding:[14,14]}); fitFor=id; }
   else if(!all.length && fitFor!==id){ map.setView([42.38,-83.37],12); fitFor=id; }
+}
+// Tapping the map offers directions to that spot; tapping a street also offers the check-off.
+function mapPopup(ll, title, check){
+  const el=document.createElement("div"); el.style.minWidth="150px";
+  el.innerHTML=`<b>${esc(title)}</b><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><a class="mapbtn" target="_blank" rel="noopener" href="${dirUrl(ll.lat.toFixed(5)+","+ll.lng.toFixed(5))}">Directions</a>${check?`<button type="button" class="mapbtn" id="mapTick">${check.done?"Uncheck":"Check off"}</button>`:""}</div>`;
+  const pop=L.popup({closeButton:true}).setLatLng(ll).setContent(el).openOn(map);
+  const b=el.querySelector("#mapTick"); if(b) b.onclick=()=>{ map.closePopup(pop); check.go(); };
 }
 function locate(){
   if(!navigator.geolocation||!map) return toast("Location is not available on this phone");
