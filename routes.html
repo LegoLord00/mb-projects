@@ -624,7 +624,7 @@ function renderSetup(app){
     <table>${Object.entries(areas).map(([k,a])=>`<tr><td><b>${esc(a.name)}</b><div class="muted">${Object.keys(a.streets||{}).length} streets &middot; ${Number(a.doors||0).toLocaleString()} doors &middot; ${esc(a.city||"")}</div>${a.note?`<div class="muted">${esc(a.note)}</div>`:""}</td><td style="text-align:right"><button class="small" data-area="${esc(k)}">Edit streets</button></td></tr>`).join("")||'<tr><td class="meta">No areas yet.</td></tr>'}</table>
     <div class="actions"><button class="small" id="addArea">Add area</button></div></div>
     <div class="card"><h2>Training and system check</h2><p class="muted">The training route is two easy streets assigned to you, for showing a new walker how to check off a street, take the photo and file the report. The system check tests that every part of the page is working.</p><div class="bar"><button class="small" id="goTraining">Open the training route</button><button class="small" id="sysCheck">Run system check</button></div></div>
-    <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Load starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Starting data loads the areas, their streets, the scheduled routes and the training route. It does not touch walkers, check-offs, photos, or day reports.</p></div>`;
+    <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Add missing starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Adds any area or route from the starting file that is not on the board yet. It never overwrites an area, a route, a walker, a check-off, a photo or a day report that is already here.</p></div>`;
   $("#wform").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const em=f.email.value.trim().toLowerCase(); const k=emailKey(em);
     const cur=allowedWalkers[k]; if(cur && cur.tier && cur.tier!=="walker") return toast(`${em} is already on the team list as ${cur.tier}. Change it on the Projects page Team tab.`);
     await store.update({["allowed/"+k]:{name:f.name.value.trim(),email:em,tier:"walker",strava:stravaClean(f.strava.value)}}); toast("Walker added"); };
@@ -657,19 +657,27 @@ function editArea(k){
 }
 // Looks a street up in OpenStreetMap inside the area's box and returns its line.
 async function findStreet(name, a){
-  try { let b=a.bbox; if(!b){ const pts=[]; Object.values(a.streets||{}).forEach(s=>parseGeo(s).forEach(g=>g.forEach(p=>pts.push(p)))); if(!pts.length) return "[]"; const la=pts.map(p=>p[0]), lo=pts.map(p=>p[1]); b=[Math.min(...la)-.003,Math.min(...lo)-.004,Math.max(...la)+.003,Math.max(...lo)+.004]; }
-    const core=name.replace(/^(N|S|E|W|North|South|East|West)\.?\s+/i,"").replace(/\s+(St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ct|Court|Ln|Lane|Blvd|Boulevard|Cir|Circle|Trl|Trail|Pl|Place)\.?$/i,"").replace(/["\\]/g,"");
-    const q=`[out:json][timeout:25];way[highway][name~"${core}",i](${b.join(",")});out geom;`;
-    const r=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});
-    const j=await r.json(); const segs=(j.elements||[]).map(w=>(w.geometry||[]).map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)])).filter(g=>g.length>1);
-    return JSON.stringify(segs);
-  } catch(e){ return "[]"; }
+  let b=a.bbox; if(!b){ const pts=[]; Object.values(a.streets||{}).forEach(s=>parseGeo(s).forEach(g=>g.forEach(p=>pts.push(p)))); if(!pts.length) return "[]"; const la=pts.map(p=>p[0]), lo=pts.map(p=>p[1]); b=[Math.min(...la)-.003,Math.min(...lo)-.004,Math.max(...la)+.003,Math.max(...lo)+.004]; }
+  // Reach a little past the area edge so a street is drawn all the way to the boundary road.
+  b=[b[0]-.0005,b[1]-.0007,b[2]+.0005,b[3]+.0007];
+  const core=name.replace(/^(N|S|E|W|North|South|East|West)\.?\s+/i,"").replace(/\s+(St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ct|Court|Ln|Lane|Blvd|Boulevard|Cir|Circle|Trl|Trail|Pl|Place)\.?$/i,"").replace(/["\\]/g,"");
+  const q=`[out:json][timeout:25];way[highway][name~"${core}",i](${b.join(",")});out geom;`;
+  let last="";
+  for(let n=0;n<4;n++){
+    try { const r=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+      if(!r.ok){ last="the map service is busy ("+r.status+")"; toast("Map service busy, trying "+name+" again"); await new Promise(x=>setTimeout(x,6000*(n+1))); continue; }
+      const j=await r.json(); const segs=(j.elements||[]).map(w=>(w.geometry||[]).map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)])).filter(g=>g.length>1);
+      return JSON.stringify(segs); }
+    catch(e){ last="the map service could not be reached"; await new Promise(x=>setTimeout(x,6000*(n+1))); }
+  }
+  toast("No map line for "+name+": "+last+". Edit the area and add it again later."); return "[]";
 }
 async function loadSeed(){
-  if(Object.keys(routes).length && !confirm("Routes already exist. Loading starting data replaces the areas and the routes with the same ids, including any edits to them. Continue?")) return;
   try { const s=await (await fetch(SEED_URL,{cache:"no-store"})).json(); const upd={};
-    Object.entries(s.areas||{}).forEach(([k,v])=>upd["routeAreas/"+k]=v); Object.entries(s.routes||{}).forEach(([k,v])=>upd["routes/"+k]=v);
-    await store.update(upd); toast(`Loaded ${Object.keys(s.areas||{}).length} areas and ${Object.keys(s.routes||{}).length} routes`); }
+    // Only what is missing is added. Areas and routes already on the board keep their walkers, dates, streets and map lines.
+    Object.entries(s.areas||{}).forEach(([k,v])=>{ if(!areas[k]) upd["routeAreas/"+k]=v; }); Object.entries(s.routes||{}).forEach(([k,v])=>{ if(!routes[k]) upd["routes/"+k]=v; });
+    const n=Object.keys(upd).length; if(!n) return toast("Nothing was missing. The board was left as it is.");
+    await store.update(upd); toast(`Added ${n} missing areas and routes. Nothing already on the board was changed.`); }
   catch(e){ toast("Could not load "+SEED_URL); }
 }
 function backup(){
