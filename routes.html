@@ -358,15 +358,21 @@ function reportForm(d){
   return `<form class="card" id="report"><h2>Day report, ${fmtDay(d)}</h2>
     <p class="muted">Fill this in at the end of the day. You can change it until Russel closes the week.</p>
     <div class="grid2"><div><label>Hangers hung today</label><input name="count" type="number" inputmode="numeric" min="0" value="${esc(L.count??"")}" required></div>
-    <div><label>Strava activity link</label><input name="strava" type="url" placeholder="https://www.strava.com/activities/..." value="${esc(L.strava||"")}"></div>
+    <div><label>Strava activity link (optional)</label><input name="strava" type="url" placeholder="https://www.strava.com/activities/..." value="${esc(L.strava||"")}"></div>
     <div><label>Start time</label><input name="start" type="time" value="${esc(L.start||"")}" required></div>
     <div><label>End time</label><input name="end" type="time" value="${esc(L.end||"")}" required></div></div>
+    <label>Your walk</label>
+    <p class="muted" style="margin:0 0 6px">Finish your Strava recording, take a screenshot of the map with the distance and time showing, and add it here.</p>
+    ${routesOn(d).map(([rid,r])=>{ const has=(L.walks||{})[rid]; return `<div class="bar" style="margin:0 0 6px"><label class="iconbtn small" style="margin:0;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink)">${has?"Replace walk screenshot":"Add walk screenshot"}<input type="file" accept="image/*" data-walk="${esc(rid)}" hidden></label><span class="meta">${esc(flyerOf(r))}, ${esc((areas[r.areaId]||{}).name||"")}</span>${has?`<span class="chip ok">Added ${fmtTime(has)}</span><button type="button" class="small" data-walkview="${esc(rid)}">View</button>`:'<span class="chip warn">Not added</span>'}</div>`; }).join("")||'<p class="muted">No route on this day.</p>'}
     <label>Notes (skipped houses, problems, a partial route and the last address hung)</label><textarea name="note" rows="2">${esc(L.note||"")}</textarea>
     <div class="actions">${L.at?`<span class="muted" style="margin-right:auto">Saved ${fmtTime(L.at)}</span>`:""}<button class="primary">Save report</button></div></form>`;
 }
 function wireReport(d){
+  document.querySelectorAll("[data-walk]").forEach(i=>i.onchange=()=>i.files[0]&&addWalk(d,i.dataset.walk,i.files[0]));
+  document.querySelectorAll("[data-walkview]").forEach(b=>b.onclick=()=>viewPhoto(b.dataset.walkview,"walk_"+d));
   $("#report").onsubmit=async e=>{ e.preventDefault(); if(previewOnly()) return; const f=e.target;
     const v={count:Number(f.count.value)||0, strava:f.strava.value.trim(), start:f.start.value, end:f.end.value, note:f.note.value.trim(), at:Date.now(), name:me.name};
+    const keep=((logs[d]||{})[me.key]||{}).walks; if(keep) v.walks=keep;
     await store.update({["routeLogs/"+d+"/"+me.key]:v, ["routeLogsByWalker/"+me.key+"/"+d]:v}); toast("Report saved"); };
 }
 
@@ -454,9 +460,17 @@ async function addPhoto(rid,sid,file){
     await store.update(upd); toast("Photo saved"); }
   catch(e){ toast(e.message||"Photo failed"); }
 }
+// The day's walk screenshot is kept with the route's photos, so it loads only when someone opens it.
+async function addWalk(d,rid,file){
+  if(previewOnly()) return;
+  try { toast("Uploading walk"); const data=await shrinkImage(file); const now=Date.now();
+    await store.update({["routePhotos/"+rid+"/walk_"+d]:{data, at:now, by:me.key}, ["routeLogs/"+d+"/"+me.key+"/walks/"+rid]:now, ["routeLogsByWalker/"+me.key+"/"+d+"/walks/"+rid]:now});
+    toast("Walk saved"); }
+  catch(e){ toast(e.message||"Walk upload failed"); }
+}
 async function viewPhoto(rid,sid){
   const p=await store.get("routePhotos/"+rid+"/"+sid); const s=(areas[routes[rid].areaId]?.streets||{})[sid]||{};
-  openDlg(`<h2>${esc(s.name||"Photo")}</h2>${p?`<img class="photo" src="${p.data}" alt="Street photo"><p class="muted">${fmtDay(iso(new Date(p.at)))} ${fmtTime(p.at)} &middot; ${esc(walkerName(p.by))}</p>`:'<p class="meta">No photo found.</p>'}<div class="actions"><button data-close>Close</button></div>`);
+  openDlg(`<h2>${esc(s.name||(String(sid).startsWith("walk_")?"Walk, "+fmtDay(String(sid).slice(5)):"Photo"))}</h2>${p?`<img class="photo" src="${p.data}" alt="Street photo"><p class="muted">${fmtDay(iso(new Date(p.at)))} ${fmtTime(p.at)} &middot; ${esc(walkerName(p.by))}</p>`:'<p class="meta">No photo found.</p>'}<div class="actions"><button data-close>Close</button></div>`);
 }
 function openDlg(html){ const d=$("#dlg"); d.innerHTML=html; d.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>d.close()); if(!d.open) d.showModal(); return d; }
 
@@ -534,7 +548,7 @@ function renderReview(app){
     const done=[]; Object.entries(checks).forEach(([rid,cs])=>Object.entries(cs).forEach(([sid,c])=>{ if(c.by===k && c.date===curDate && routes[rid]) done.push({rid,sid,c,name:(areas[routes[rid].areaId]?.streets||{})[sid]?.name||sid}); }));
     done.sort((a,b)=>a.c.at-b.c.at);
     return `<div class="card"><h2>${esc(w.name)}</h2>
-      ${L?`<div class="meta"><b>${Number(L.count||0).toLocaleString()}</b> hangers &middot; ${esc(L.start||"?")} to ${esc(L.end||"?")} &middot; ${money((L.count||0)*RATE)} &middot; ${L.strava?`<a href="${esc(L.strava)}" target="_blank" rel="noopener">Open Strava recording</a>`:'<span class="chip warn">No Strava link</span>'}</div>${L.note?`<div class="muted">${esc(L.note)}</div>`:""}`:'<div class="meta"><span class="chip warn">No day report</span></div>'}
+      ${L?`<div class="meta"><b>${Number(L.count||0).toLocaleString()}</b> hangers &middot; ${esc(L.start||"?")} to ${esc(L.end||"?")} &middot; ${money((L.count||0)*RATE)} &middot; ${L.strava?`<a href="${esc(L.strava)}" target="_blank" rel="noopener">Open Strava recording</a>`:""} ${Object.keys(L.walks||{}).filter(rid=>routes[rid]).map(rid=>`<button class="small" data-pv="${esc(rid)}|walk_${curDate}">Walk: ${esc(flyerOf(routes[rid]))}</button>`).join(" ")||(L.strava?"":'<span class="chip warn">No walk added</span>')}</div>${L.note?`<div class="muted">${esc(L.note)}</div>`:""}`:'<div class="meta"><span class="chip warn">No day report</span></div>'}
       <div class="meta" style="margin-top:8px">${done.length} streets checked off, ${done.filter(x=>x.c.photo).length} with a photo</div>
       ${done.length?`<div class="scroll"><table>${done.map(x=>`<tr><td>${fmtTime(x.c.at)}</td><td>${esc(x.name)}<div class="muted">${esc(routes[x.rid].name)}</div></td><td>${x.c.photo?`<button class="small" data-pv="${esc(x.rid)}|${esc(x.sid)}">Photo</button>`:'<span class="chip warn">no photo</span>'}</td></tr>`).join("")}</table></div>`:""}</div>`; }).join("") || `<div class="card"><p class="meta">No walkers yet. Add them in Setup.</p></div>`;
   h+=`<div class="card"><h2>Week of ${fmtDay(mon)}</h2><p class="muted">Signed out minus returned is the count you pay on. It should match what the walker reported.</p><div class="scroll"><table><tr><th>Walker</th><th>Reported</th><th>Hours</th><th>Pace</th><th>Signed out</th><th>Returned</th><th>Counted</th><th>Pay</th></tr>
