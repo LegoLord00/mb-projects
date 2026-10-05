@@ -425,7 +425,7 @@ function renderRoute(app){
     <div id="mapSlot"></div>
     <div class="bar"><button class="small" id="locate">Show where I am</button><span class="muted">Green is done. Tap the map for directions. Tap a street to check it off.</span></div>
     <ul class="streets">${st.map(s=>{ const k=c[s.id]; return `<li class="${k?"done":""}" data-s="${esc(s.id)}"><button class="tick" data-tick="${esc(s.id)}" aria-label="Mark ${esc(s.name)}" ${canCheck?"":"disabled"}>${k?"&#10003;":""}</button>
-      <span class="nm"><b>${esc(s.name)}</b>${k?`<div class="muted">${fmtDay(k.date)} ${fmtTime(k.at)}${isAdmin?" &middot; "+esc(walkerName(k.by)):""}</div>`:""}${parseGeo(s).length?"":'<div class="muted">Not drawn on the map</div>'}</span>
+      <span class="nm"><b>${esc(s.name)}</b>${s.side?` <span class="chip warn">${esc(s.side)}</span>`:""}${k?`<div class="muted">${fmtDay(k.date)} ${fmtTime(k.at)}${isAdmin?" &middot; "+esc(walkerName(k.by)):""}</div>`:""}${parseGeo(s).length?"":'<div class="muted">Not drawn on the map</div>'}</span>
       ${k&&k.photo?`<button class="iconbtn small" data-view="${esc(s.id)}">Photo</button>`:""}
       ${canCheck?`<label class="iconbtn small" style="margin:0;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink)">${k&&k.photo?"Retake":"Add photo"}<input type="file" accept="image/*" capture="environment" data-photo="${esc(s.id)}" hidden></label>`:""}
       <a class="muted" target="_blank" rel="noopener" href="${dirUrl(midOf(s)||(s.name+", "+(a.city||"Livonia")+", MI"))}">Directions</a></li>`; }).join("")||'<li class="meta">No streets are loaded for this area yet.</li>'}</ul>`;
@@ -445,7 +445,7 @@ function drawMap(id, st, c, canCheck){
   map.off("click"); map.on("click",e=>mapPopup(e.latlng,"This spot",null));
   st.forEach(s=>{ const segs=parseGeo(s); if(!segs.length) return; const done=!!c[s.id];
     const pl=L.polyline(segs,{color:done?"#1c7a4c":"#c0392b",weight:done?6:5,opacity:done?.9:.75}).addTo(layer);
-    pl.bindTooltip(s.name); pl.on("click",e=>{ L.DomEvent.stopPropagation(e); mapPopup(e.latlng, s.name, canCheck?{done, go:()=>toggleStreet(id,s.id)}:null); }); segs.forEach(g=>g.forEach(pt=>all.push(pt))); });
+    pl.bindTooltip(s.name+(s.side?" ("+s.side+")":"")); if(s.side) pl.setStyle({dashArray:"10 7"}); pl.on("click",e=>{ L.DomEvent.stopPropagation(e); mapPopup(e.latlng, s.name+(s.side?" ("+s.side+")":""), canCheck?{done, go:()=>toggleStreet(id,s.id)}:null); }); segs.forEach(g=>g.forEach(pt=>all.push(pt))); });
   map.invalidateSize();
   if(fitFor!==id && all.length){ map.fitBounds(L.latLngBounds(all),{padding:[14,14]}); fitFor=id; }
   else if(!all.length && fitFor!==id){ map.setView([42.38,-83.37],12); fitFor=id; }
@@ -641,14 +641,15 @@ function editArea(k){
   const d=openDlg(`<form id="af"><h2>Edit area</h2>
     <div class="grid2"><div><label>Area name</label><input name="name" value="${esc(a.name)}" required></div><div><label>City</label><input name="city" value="${esc(a.city||"")}"></div><div><label>Doors per pass</label><input name="doors" type="number" min="0" value="${esc(a.doors||0)}"></div></div>
     <label>Start address for every pass (walkers tap it to open their map)</label><input name="start" value="${esc(a.start||"")}" placeholder="19000 Hickory Lane, Livonia, MI">
-    <label>Streets (number sets the walking order; tick to remove)</label>
-    <div class="scroll" style="max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:var(--r)"><table>${st.map(s=>`<tr><td style="width:30px"><input type="checkbox" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.name)}"></td><td style="width:74px"><input type="number" data-ord="${esc(s.id)}" value="${esc(s.order??"")}"></td><td><input data-nm="${esc(s.id)}" value="${esc(s.name)}"></td><td class="muted" style="white-space:nowrap">${parseGeo(s).length?"on map":"no line"}</td></tr>`).join("")||'<tr><td class="meta">No streets yet.</td></tr>'}</table></div>
+    <label>Streets (number sets the walking order; tick to remove; the last box is for a main road walked on one side only, such as "North side only")</label>
+    <div class="scroll" style="max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:var(--r)"><table>${st.map(s=>`<tr><td style="width:30px"><input type="checkbox" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.name)}"></td><td style="width:74px"><input type="number" data-ord="${esc(s.id)}" value="${esc(s.order??"")}"></td><td><input data-nm="${esc(s.id)}" value="${esc(s.name)}"></td><td style="width:150px"><input data-side="${esc(s.id)}" value="${esc(s.side||"")}" placeholder="both sides" aria-label="Side of ${esc(s.name)} to walk"></td><td class="muted" style="white-space:nowrap">${parseGeo(s).length?"on map":"no line"}</td></tr>`).join("")||'<tr><td class="meta">No streets yet.</td></tr>'}</table></div>
     <label>Add streets (one per line)</label><textarea name="add" rows="3" placeholder="Hawthorn Street"></textarea>
     <label><input type="checkbox" name="find" checked> Look up new streets on the map</label>
     <div class="actions"><button type="button" class="danger" id="delA" style="margin-right:auto">Delete area</button><button type="button" data-close>Cancel</button><button class="primary">Save</button></div></form>`);
   $("#af").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const upd={["routeAreas/"+k+"/name"]:f.name.value.trim(),["routeAreas/"+k+"/city"]:f.city.value.trim(),["routeAreas/"+k+"/doors"]:Number(f.doors.value)||0}; const sv=f.start.value.trim(); if(sv!==(a.start||"")){ upd["routeAreas/"+k+"/start"]=sv; upd["routeAreas/"+k+"/startLat"]=null; upd["routeAreas/"+k+"/startLon"]=null; }
     f.querySelectorAll("[data-nm]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.nm+"/name"]=i.value.trim());
     f.querySelectorAll("[data-ord]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.ord+"/order"]=i.value===""?null:Number(i.value));
+    f.querySelectorAll("[data-side]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.side+"/side"]=i.value.trim()||null);
     f.querySelectorAll("[data-del]:checked").forEach(i=>{ Object.keys(upd).forEach(p=>{ if(p.startsWith("routeAreas/"+k+"/streets/"+i.dataset.del+"/")) delete upd[p]; }); upd["routeAreas/"+k+"/streets/"+i.dataset.del]=null; });
     const add=f.add.value.split("\n").map(s=>s.trim()).filter(Boolean); let n=st.length?Math.max(...st.map(s=>s.order||0)):0;
     for(const name of add){ const sid=store.key(); let geo="[]"; if(f.find.checked){ toast("Looking up "+name); geo=await findStreet(name,a); } upd["routeAreas/"+k+"/streets/"+sid]={name,order:++n,geo}; }
