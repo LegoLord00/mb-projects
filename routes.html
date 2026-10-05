@@ -96,6 +96,8 @@
   .daycol h3{margin:0 0 6px}
   .rowlink{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);cursor:pointer}
   img.photo{max-width:100%;border-radius:var(--r)}
+  .viewas{width:auto;margin-left:auto;font-size:13px;padding:5px 8px}
+  .demo button{margin-left:8px}
   .demo{background:var(--amber-soft);color:var(--amber);padding:6px 12px;font-size:13px;text-align:center}
   @media (max-width:520px){.grid2{grid-template-columns:1fr}}
 
@@ -118,6 +120,7 @@
 </style>
 </head>
 <body>
+<div id="previewBar" class="demo" hidden></div>
 <div id="demoBanner" class="demo" hidden>Demo mode. Nothing here is saved.</div>
 <header>
   <button type="button" class="navbtn" id="navBtn" hidden aria-label="Open page menu" aria-controls="pgDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -210,6 +213,17 @@ const store = DEMO ? demoStore() : fbStore();
 
 // ---------- state ----------
 let me=null, isAdmin=false;
+// Walker preview: the office can look at the page exactly as a walker seat sees it. Nothing saves while it is on.
+let realAdmin=false, viewAs="", meReal=null;
+function setViewAs(s){
+  if(!realAdmin) return;
+  if(!meReal) meReal=me;
+  viewAs=s||""; isAdmin=!viewAs;
+  if(viewAs){ const k=seatPerson(viewAs); me={...meReal, key:k||"preview", name:k?walkerName(k):viewAs}; }
+  else me=meReal;
+  view="today"; openRoute=null; walkerFilter=""; render(); window.scrollTo(0,0);
+}
+const previewOnly = () => { if(viewAs){ toast("Walker preview. Nothing is saved."); return true; } return false; };
 let areas={}, routes={}, checks={}, logs={}, walkers={}, supply={};
 let allowedWalkers={}, legacyWalkers={};
 let view="today", curDate=today(), openRoute=null, walkerFilter="";
@@ -234,7 +248,7 @@ async function enter(user){
     let legacy = null; if(tier!=="admin" && tier!=="walker") legacy = await store.get("walkers/"+me.key).catch(()=>null);
     if(tier==="crew"){ location.replace(TIER_HOME.crew); return; }
     if(tier!=="admin" && tier!=="walker" && !legacy) return deny(`${me.email} is not on the route list. Ask Russel to add it, then sign out and back in.`);
-    isAdmin = tier==="admin";
+    isAdmin = tier==="admin"; realAdmin=isAdmin; viewAs=""; meReal=null;
     if(mine?.name) me.name = mine.name; else if(legacy?.name) me.name = legacy.name;
     $("#gate").hidden=true; $("#app").hidden=false; $("#nav").hidden=false; $("#navBtn").hidden=!isAdmin; attach();
   } catch(e){
@@ -279,15 +293,19 @@ function seatIsLight(s){ const all=seatList().map(seatDoors); const top=Math.max
 const whoLabel = r => r.seat ? `${r.seat} &middot; ${r.walker?esc(walkerName(r.walker)):"no one assigned"}` : esc(walkerName(r.walker));
 const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
-const mineOrAll = r => isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
+const mineOrAll = r => viewAs ? r.seat===viewAs : isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
 const routesOn = d => Object.entries(routes).filter(([,r])=>r.start && r.start<=d && d<=(r.end||r.start) && (!r.days || r.days[d]) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
 const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return []; } };
 
 // ---------- navigation ----------
 function tabs(){
   const t = isAdmin ? [["today","Day"],["week","Week"],["schedule","Schedule"],["review","Review"],["setup","Setup"]] : [["today","Today"],["week","Week"],["mylog","My days"]];
-  $("#nav").innerHTML = t.map(([k,l])=>`<button data-v="${k}" class="${view===k&&!openRoute?"on":""}">${l}</button>`).join("");
-  $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
+  $("#nav").innerHTML = t.map(([k,l])=>`<button data-v="${k}" class="${view===k&&!openRoute?"on":""}">${l}</button>`).join("")
+    + (realAdmin && seatList().length ? `<select id="viewAs" class="viewas" aria-label="See the page as a walker"><option value="">Office view</option>${seatList().map(s=>`<option value="${esc(s)}" ${viewAs===s?"selected":""}>See as ${esc(s)}</option>`).join("")}</select>` : "");
+  const pb=$("#previewBar"); pb.hidden=!viewAs; if(viewAs) pb.innerHTML=`Walker preview: this is what <b>${esc(viewAs)}</b>${seatPerson(viewAs)?" ("+esc(walkerName(seatPerson(viewAs)))+")":""} sees. Nothing is saved. <button class="small" id="exitPreview">Back to office view</button>`;
+  if(viewAs) $("#exitPreview").onclick=()=>setViewAs("");
+  const va=$("#viewAs"); if(va) va.onchange=()=>setViewAs(va.value);
+  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
 }
 function dateBar(){
   const sel = isAdmin ? `<select id="wf" style="width:auto"><option value="">All walkers</option>${seatList().map(s=>`<option value="seat:${esc(s)}" ${walkerFilter==="seat:"+s?"selected":""}>${esc(s)}</option>`).join("")}${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${walkerFilter===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select>` : "";
@@ -347,7 +365,7 @@ function reportForm(d){
     <div class="actions">${L.at?`<span class="muted" style="margin-right:auto">Saved ${fmtTime(L.at)}</span>`:""}<button class="primary">Save report</button></div></form>`;
 }
 function wireReport(d){
-  $("#report").onsubmit=async e=>{ e.preventDefault(); const f=e.target;
+  $("#report").onsubmit=async e=>{ e.preventDefault(); if(previewOnly()) return; const f=e.target;
     const v={count:Number(f.count.value)||0, strava:f.strava.value.trim(), start:f.start.value, end:f.end.value, note:f.note.value.trim(), at:Date.now(), name:me.name};
     await store.update({["routeLogs/"+d+"/"+me.key]:v, ["routeLogsByWalker/"+me.key+"/"+d]:v}); toast("Report saved"); };
 }
@@ -383,7 +401,7 @@ function renderMyLog(app){
 let map=null, mapEl=null, layer=null, meMarker=null, fitFor=null;
 function renderRoute(app){
   const id=openRoute, r=routes[id], a=areas[r.areaId]||{}, st=streetsOf(r), c=checks[id]||{}, p=progress(id);
-  const canCheck = isAdmin || r.walker===me.key;
+  const canCheck = isAdmin || !!viewAs || r.walker===me.key;
   app.innerHTML=`<div class="bar"><button class="small" id="back">&#8249; Back</button><span class="date">${esc(r.name)}</span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>
     <div class="meta" style="margin:-6px 0 10px">${esc(a.name||"")} &middot; ${fmtRange(r.start,r.end)}${a.start?`<br>Start: ${startLink(a)}`:""} &middot; ${Number(r.doors||0).toLocaleString()} doors${r.note?"<br>"+esc(r.note):""}</div>
     <div id="mapSlot"></div>
@@ -418,6 +436,7 @@ function locate(){
   navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; if(meMarker) meMarker.remove(); meMarker=L.circleMarker(ll,{radius:8,color:"#1f4e8c",fillColor:"#1f4e8c",fillOpacity:.9}).addTo(map); map.setView(ll,Math.max(map.getZoom(),17)); }, ()=>toast("Could not get your location"), {enableHighAccuracy:true,timeout:10000});
 }
 async function toggleStreet(rid,sid){
+  if(previewOnly()) return;
   const k=(checks[rid]||{})[sid];
   if(k){ await store.update({["routeChecks/"+rid+"/"+sid]:null, ["routePhotos/"+rid+"/"+sid]:null}); toast("Unchecked"); }
   else { await store.update({["routeChecks/"+rid+"/"+sid]:{by:me.key, at:Date.now(), date:today()}}); toast("Street done"); }
@@ -428,6 +447,7 @@ function shrinkImage(file){
     img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("That file is not a photo")); }; img.src=url; });
 }
 async function addPhoto(rid,sid,file){
+  if(previewOnly()) return;
   try { toast("Uploading photo"); const data=await shrinkImage(file); const now=Date.now(); const k=(checks[rid]||{})[sid];
     const upd={["routePhotos/"+rid+"/"+sid]:{data, at:now, by:me.key}};
     if(k) upd["routeChecks/"+rid+"/"+sid+"/photo"]=true; else upd["routeChecks/"+rid+"/"+sid]={by:me.key, at:now, date:today(), photo:true};
