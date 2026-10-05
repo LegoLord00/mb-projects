@@ -73,6 +73,24 @@
   .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
   #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:var(--r);opacity:0;transition:opacity .2s;pointer-events:none;z-index:3000;font-size:14px}
   #toast.show{opacity:1}
+  .lanes{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin:0 0 12px}
+  .lane{flex:1 1 250px;min-width:0;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+  .lane.light{flex:.7 1 210px;background:transparent;border-style:dashed}
+  .lane>h3{margin:0;font-size:16px}
+  .lane .lanewho{color:var(--ink2);font-size:13px;margin:0 0 8px}
+  .lane .card{margin:0 0 8px}
+  .lane .card:last-child{margin-bottom:0}
+  .flyer{font-size:17px;font-weight:700;margin:0 0 2px}
+  .flyerlist{margin:0;padding:0;list-style:none}
+  .flyerlist li{padding:6px 0;border-bottom:1px dashed var(--line);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+  .flyerlist li:last-child{border-bottom:0}
+  .wk{display:grid;gap:6px 10px;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
+  .wk .cell{font-size:13px;min-width:0}
+  .wk .cell b{display:block;font-size:14px}
+  .wk .cell[data-open]{cursor:pointer}
+  .wkhead{font-size:12px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.04em}
+  .daycol h3.daylink{cursor:pointer;color:var(--accent)}
+  @media (max-width:560px){.wk{grid-template-columns:1fr}.wkhead{display:none}.wk .cell::before{content:attr(data-seat) ": ";color:var(--muted);font-weight:650}}
   .daycol{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 12px}
   .daycol.today{border-color:var(--accent)}
   .daycol h3{margin:0 0 6px}
@@ -242,10 +260,27 @@ function attach(){
 
 // ---------- helpers on the data ----------
 const walkerName = k => !k ? "Unassigned" : (walkers[k]?.name || k.replace(/,/g,"."));
+// Seats: a route belongs to a seat ("Walker 1"). A person is put in a seat, and every open route in that seat follows.
+// A seat exists as long as one route carries its name, so adding a seat is typing a new name on a route.
+const seatList = () => [...new Set(Object.values(routes).map(r=>r.seat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+const seatRoutes = s => Object.entries(routes).filter(([,r])=>r.seat===s);
+const routeOpen = (r,from) => !r.start || (r.end||r.start)>=from;
+function seatPerson(s){ const t=today(); const rs=seatRoutes(s).map(([,r])=>r).filter(r=>routeOpen(r,t)).sort((a,b)=>(a.start||"9").localeCompare(b.start||"9")); const hit=rs.find(r=>r.walker); return hit?hit.walker:""; }
+// What the walker sees: a plain flyer label ("Lights Pass 1") and which version of it.
+const flyerOf = r => r.flyer || r.name || "";
+// Hours for one day at the standard pace. Uses the planned split when the route has one, otherwise an even split over its weekdays.
+function hoursOn(r,d){ if(!r.start || d<r.start || d>(r.end||r.start)) return 0; if(r.days) return Number(r.days[d])||0;
+  let n=0; for(let x=r.start; x<=(r.end||r.start); x=addDays(x,1)){ const w=pd(x).getUTCDay(); if(w!==0&&w!==6) n++; } return (Number(r.doors)||0)/PACE/(n||1); }
+const hrs = n => (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,"");
+const startLink = a => !a||!a.start ? "" : `<a href="https://www.google.com/maps/search/?api=1&query=${a.startLat&&a.startLon?encodeURIComponent(a.startLat+","+a.startLon):encodeURIComponent(a.start)}" target="_blank" rel="noopener" data-stop>${esc(a.start)}</a>`;
+const seatDoors = s => seatRoutes(s).reduce((n,[,r])=>n+(Number(r.doors)||0),0);
+// A light seat carries well under a full walker's share. It is the part-time or backup lane.
+function seatIsLight(s){ const all=seatList().map(seatDoors); const top=Math.max(0,...all); return top>0 && seatDoors(s) < top*0.5; }
+const whoLabel = r => r.seat ? `${r.seat} &middot; ${r.walker?esc(walkerName(r.walker)):"no one assigned"}` : esc(walkerName(r.walker));
 const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
-const mineOrAll = r => isAdmin ? (!walkerFilter || r.walker===walkerFilter) : r.walker===me.key;
-const routesOn = d => Object.entries(routes).filter(([,r])=>r.start && r.start<=d && d<=(r.end||r.start) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
+const mineOrAll = r => isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
+const routesOn = d => Object.entries(routes).filter(([,r])=>r.start && r.start<=d && d<=(r.end||r.start) && (!r.days || r.days[d]) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
 const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return []; } };
 
 // ---------- navigation ----------
@@ -255,7 +290,7 @@ function tabs(){
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
 }
 function dateBar(){
-  const sel = isAdmin ? `<select id="wf" style="width:auto"><option value="">All walkers</option>${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${walkerFilter===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select>` : "";
+  const sel = isAdmin ? `<select id="wf" style="width:auto"><option value="">All walkers</option>${seatList().map(s=>`<option value="seat:${esc(s)}" ${walkerFilter==="seat:"+s?"selected":""}>${esc(s)}</option>`).join("")}${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${walkerFilter===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select>` : "";
   return `<div class="bar"><button class="small" id="prevD" aria-label="Previous">&#8249;</button><span class="date">${view==="week"?"Week of "+fmtDay(mondayOf(curDate)):fmtDay(curDate)}${curDate===today()&&view!=="week"?' <span class="chip">Today</span>':""}</span><button class="small" id="nextD" aria-label="Next">&#8250;</button><button class="small" id="nowD">Today</button>${sel}</div>`;
 }
 function wireDateBar(step){
@@ -266,12 +301,13 @@ function wireDateBar(step){
 }
 function routeCard(id,r){
   const p=progress(id), a=areas[r.areaId]||{};
-  return `<div class="card routecard" data-open="${esc(id)}"><div class="top"><h3>${esc(r.name)}</h3><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total} streets</span></div>
-    <div class="meta">${esc(a.name||"")} &middot; ${esc(r.hanger||"")}</div>
-    <div class="meta">${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors &middot; about ${(r.doors/PACE).toFixed(1)} hrs${isAdmin?` &middot; ${esc(walkerName(r.walker))}`:""}</div>
+  return `<div class="card routecard" data-open="${esc(id)}"><div class="top"><p class="flyer">${esc(flyerOf(r))}</p><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total} streets</span></div>
+    <div class="meta">${esc(a.name||"")}</div>${a.start?`<div class="meta">Start: ${startLink(a)}</div>`:""}
+    ${hoursOn(r,curDate)?`<div class="meta"><b>About ${hrs(hoursOn(r,curDate))} hrs on ${fmtDay(curDate)}</b> at ${PACE} doors an hour, about ${Math.round(hoursOn(r,curDate)*PACE).toLocaleString()} doors</div>`:""}
+    <div class="meta">${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors &middot; about ${(r.doors/PACE).toFixed(1)} hrs${isAdmin&&(walkerFilter||!r.seat)?` &middot; ${whoLabel(r)}`:""}</div>
     <div class="prog"><i style="width:${p.pct}%"></i></div>${r.note?`<div class="muted">${esc(r.note)}</div>`:""}</div>`;
 }
-const wireCards = () => document.querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>{ openRoute=el.dataset.open; render(); window.scrollTo(0,0); });
+const wireCards = () => document.querySelectorAll("[data-open]").forEach(el=>el.onclick=e=>{ if(e.target.closest("[data-stop]")) return; openRoute=el.dataset.open; render(); window.scrollTo(0,0); });
 
 // ---------- views ----------
 function render(){
@@ -286,7 +322,15 @@ function render(){
 function renderToday(app){
   const rs=routesOn(curDate);
   let h = dateBar();
+  const seats = seatList();
+  if(isAdmin && !walkerFilter && seats.length){
+    // Flyers going up, then one lane per walker seat.
+    h += `<div class="card"><h2>Flyers going up ${fmtDay(curDate)}</h2>${rs.length?`<ul class="flyerlist">${rs.map(([id,r])=>`<li><b>${esc(flyerOf(r))}</b><span class="meta">${esc((areas[r.areaId]||{}).name||"")}</span><span class="muted">${esc(r.seat||"No seat")} &middot; about ${hrs(hoursOn(r,curDate))} hrs</span></li>`).join("")}</ul>`:'<p class="meta">Nothing goes up on this day.</p>'}</div>`;
+    const lane = (title, who, list, light) => `<section class="lane ${light?"light":""}"><h3>${esc(title)}${light?' <span class="chip">Part-time or backup</span>':""}</h3><p class="lanewho">${who}</p>${list.length?list.map(([id,r])=>routeCard(id,r)).join(""):'<p class="muted">No route this day.</p>'}</section>`;
+    h += `<div class="lanes">${seats.map(s=>{ const mine=rs.filter(([,r])=>r.seat===s); const k=(mine.find(([,r])=>r.walker)||[])[1]?.walker||seatPerson(s); const t=mine.reduce((n,[,r])=>n+hoursOn(r,curDate),0); return lane(s, (k?esc(walkerName(k)):"No one assigned")+(t?` &middot; <b>about ${hrs(t)} hrs</b>`:""), mine, seatIsLight(s)); }).join("")}${rs.some(([,r])=>!r.seat)?lane("No seat","Give these routes a seat on the Schedule tab",rs.filter(([,r])=>!r.seat),true):""}</div>`;
+  } else
   h += rs.length ? rs.map(([id,r])=>routeCard(id,r)).join("") : `<div class="card"><p class="meta">No routes on this day${isAdmin&&!Object.keys(routes).length?". Open Setup to load the starting data.":"."}</p></div>`;
+  if(!isAdmin && rs.length){ const t=rs.reduce((n,[,r])=>n+hoursOn(r,curDate),0); h = h.replace('</div>', `</div><p class="meta"><b>About ${hrs(t)} hours on ${fmtDay(curDate)}</b> at ${PACE} doors an hour.</p>`); }
   if(!isAdmin) h += reportForm(curDate);
   app.innerHTML=h; wireDateBar(1); wireCards(); if(!isAdmin) wireReport(curDate);
 }
@@ -310,10 +354,15 @@ function wireReport(d){
 
 function renderWeek(app){
   const mon=mondayOf(curDate); let h=dateBar();
-  for(let i=0;i<6;i++){ const d=addDays(mon,i); const rs=routesOn(d);
+  const seats = seatList(); const lanes = isAdmin && !walkerFilter && seats.length;
+  if(lanes) h+=`<p class="muted">Tap a day to see the flyers going up and each walker's route.</p>`;
+  for(let i=0;i<7;i++){ const d=addDays(mon,i); const rs=routesOn(d);
+    if(i===6 && !rs.length) continue;
+    if(lanes){ h+=`<div class="daycol ${d===today()?"today":""}"><h3 class="daylink" data-day="${d}">${fmtDay(d)} &rsaquo;</h3><div class="wk" style="--n:${seats.length}">${i===0?"":""}${seats.map(s=>{ const mine=rs.filter(([,r])=>r.seat===s); return mine.length?mine.map(([id,r])=>`<div class="cell" data-seat="${esc(s)}" data-open="${esc(id)}"><span class="wkhead">${esc(s)}</span><b>${esc(flyerOf(r))}</b>${esc((areas[r.areaId]||{}).name||"")}</div>`).join(""):`<div class="cell muted" data-seat="${esc(s)}"><span class="wkhead">${esc(s)}</span>No route</div>`; }).join("")}</div></div>`; continue; }
     h+=`<div class="daycol ${d===today()?"today":""}"><h3>${fmtDay(d)}</h3>${rs.length?rs.map(([id,r])=>{ const p=progress(id); return `<div class="rowlink" data-open="${esc(id)}"><span><b>${esc(r.name)}</b> <span class="meta">${esc((areas[r.areaId]||{}).name||"")}${isAdmin?" &middot; "+esc(walkerName(r.walker)):""}</span></span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>`; }).join(""):`<div class="muted">${i===5?"No routes (weather make-up day)":"No routes"}</div>`}</div>`; }
   if(!isAdmin) h+=weekTotals(me.key, mon);
   app.innerHTML=h; wireDateBar(7); wireCards();
+  app.querySelectorAll("[data-day]").forEach(el=>el.onclick=()=>{ curDate=el.dataset.day; view="today"; render(); window.scrollTo(0,0); });
 }
 function weekNumbers(k, mon){
   let count=0, mins=0, days=0;
@@ -336,7 +385,7 @@ function renderRoute(app){
   const id=openRoute, r=routes[id], a=areas[r.areaId]||{}, st=streetsOf(r), c=checks[id]||{}, p=progress(id);
   const canCheck = isAdmin || r.walker===me.key;
   app.innerHTML=`<div class="bar"><button class="small" id="back">&#8249; Back</button><span class="date">${esc(r.name)}</span><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total}</span></div>
-    <div class="meta" style="margin:-6px 0 10px">${esc(a.name||"")} &middot; ${esc(r.hanger||"")} &middot; ${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors${r.note?"<br>"+esc(r.note):""}</div>
+    <div class="meta" style="margin:-6px 0 10px">${esc(a.name||"")} &middot; ${fmtRange(r.start,r.end)}${a.start?`<br>Start: ${startLink(a)}`:""} &middot; ${Number(r.doors||0).toLocaleString()} doors${r.note?"<br>"+esc(r.note):""}</div>
     <div id="mapSlot"></div>
     <div class="bar"><button class="small" id="locate">Show where I am</button><span class="muted">Green is done. Tap a street on the map or in the list.</span></div>
     <ul class="streets">${st.map(s=>{ const k=c[s.id]; return `<li class="${k?"done":""}" data-s="${esc(s.id)}"><button class="tick" data-tick="${esc(s.id)}" aria-label="Mark ${esc(s.name)}" ${canCheck?"":"disabled"}>${k?"&#10003;":""}</button>
@@ -397,27 +446,52 @@ function renderSchedule(app){
   const doors=list.reduce((n,[,r])=>n+(Number(r.doors)||0),0);
   app.innerHTML=`<div class="bar"><span class="date">Schedule</span><button class="small" id="shiftBtn">Move a campaign</button><button class="primary small" id="addRoute">Add route</button></div>
     <p class="meta">${list.length} routes, ${doors.toLocaleString()} doors, about ${Math.round(doors/PACE)} hours, ${money(doors*RATE)} in distributor pay. Tap a row to change it.</p>
+    ${seatCard()}
     <div class="card scroll"><table><tr><th>Dates</th><th>Route</th><th>Area</th><th>Doors</th><th>Walker</th><th>Done</th></tr>
-    ${list.map(([id,r])=>{ const p=progress(id); return `<tr data-edit="${esc(id)}" style="cursor:pointer"><td>${r.start?fmtRange(r.start,r.end):'<span class="chip warn">Not scheduled</span>'}${r.floating?' <span class="chip warn">floats</span>':""}</td><td><b>${esc(r.name)}</b><div class="muted">${esc(r.hanger||"")}</div></td><td>${esc((areas[r.areaId]||{}).name||"")}</td><td>${Number(r.doors||0).toLocaleString()}</td><td>${r.walker?esc(walkerName(r.walker)):'<span class="chip warn">Unassigned</span>'}</td><td>${p.done}/${p.total}</td></tr>`; }).join("")}</table></div>`;
+    ${list.map(([id,r])=>{ const p=progress(id); return `<tr data-edit="${esc(id)}" style="cursor:pointer"><td>${r.start?fmtRange(r.start,r.end):'<span class="chip warn">Not scheduled</span>'}${r.floating?' <span class="chip warn">floats</span>':""}</td><td><b>${esc(r.name)}</b><div class="muted">${esc(r.group||"")}</div></td><td>${esc((areas[r.areaId]||{}).name||"")}</td><td>${Number(r.doors||0).toLocaleString()}</td><td>${r.seat?`<b>${esc(r.seat)}</b><div class="muted">${r.walker?esc(walkerName(r.walker)):"no one assigned"}</div>`:(r.walker?esc(walkerName(r.walker)):'<span class="chip warn">Unassigned</span>')}</td><td>${p.done}/${p.total}</td></tr>`; }).join("")}</table></div>`;
   $("#addRoute").onclick=()=>editRoute(null);
   $("#shiftBtn").onclick=shiftCampaign;
+  app.querySelectorAll("[data-seatgo]").forEach(b=>b.onclick=()=>assignSeat(b.dataset.seatgo));
   app.querySelectorAll("[data-edit]").forEach(tr=>tr.onclick=()=>editRoute(tr.dataset.edit));
 }
+function seatCard(){
+  const seats=seatList(); const t=today();
+  const people=Object.entries(walkers).map(([k,w])=>[k,w.name]).sort((a,b)=>a[1].localeCompare(b[1]));
+  const loose=Object.values(routes).filter(r=>!r.seat).length;
+  return `<div class="card"><h2>Walker seats</h2><p class="muted">Routes belong to a seat. Put a person in a seat and every route in it from the chosen day forward goes to that person; finished routes keep whoever walked them. Add people under Setup. To add a seat, type a new seat name on a route.</p>
+    <div class="scroll"><table><tr><th>Seat</th><th>Routes</th><th>Doors</th><th>Hours</th><th>Pay</th><th>Person</th><th>From</th><th></th></tr>
+    ${seats.map((s,i)=>{ const rs=seatRoutes(s).map(([,r])=>r); const doors=rs.reduce((n,r)=>n+(Number(r.doors)||0),0); const cur=seatPerson(s); const left=rs.filter(r=>routeOpen(r,t)).length;
+      return `<tr><td><b>${esc(s)}</b><div class="muted">${left} still to walk</div></td><td>${rs.length}</td><td>${doors.toLocaleString()}</td><td>${Math.round(doors/PACE)}</td><td>${money(doors*RATE)}</td>
+      <td><select id="seatWho${i}" style="min-width:130px" aria-label="Person for ${esc(s)}"><option value="">No one</option>${people.map(([k,n])=>`<option value="${esc(k)}" ${cur===k?"selected":""}>${esc(n)}</option>`).join("")}</select></td>
+      <td><input type="date" id="seatFrom${i}" value="${t}" style="width:auto" aria-label="Starting day for ${esc(s)}"></td>
+      <td><button class="small primary" data-seatgo="${i}">Assign</button></td></tr>`; }).join("")||'<tr><td class="meta" colspan="8">No seats yet. Open a route and type a seat name, such as Walker 1.</td></tr>'}</table></div>
+    ${loose?`<p class="muted"><span class="chip warn">${loose} routes have no seat</span> Open each one below to give it a seat.</p>`:""}
+    ${people.length?"":'<p class="muted"><span class="chip warn">No people on the walker list</span> Add them under Setup, then assign them here.</p>'}</div>`;
+}
+async function assignSeat(i){
+  const s=seatList()[Number(i)]; if(!s) return; const who=$("#seatWho"+i).value; const from=$("#seatFrom"+i).value||today();
+  const upd={}; seatRoutes(s).forEach(([id,r])=>{ if(routeOpen(r,from)) upd["routes/"+id+"/walker"]=who; });
+  const n=Object.keys(upd).length; if(!n) return toast("No routes in "+s+" from that day forward");
+  await store.update(upd); toast(`${s}: ${n} routes ${who?"assigned to "+walkerName(who):"cleared"}`);
+}
 function editRoute(id){
-  const r=id?routes[id]:{name:"",group:"",areaId:Object.keys(areas)[0]||"",hanger:"",start:curDate,end:curDate,walker:"",doors:0,note:""};
+  const r=id?routes[id]:{name:"",group:"",areaId:Object.keys(areas)[0]||"",hanger:"",flyer:"",start:curDate,end:curDate,walker:"",seat:"",doors:0,note:""};
   const d=openDlg(`<form id="rf"><h2>${id?"Edit route":"Add route"}</h2>
     <label>Route name</label><input name="name" value="${esc(r.name)}" required placeholder="Snow 1 - Sec 8">
     <div class="grid2"><div><label>Campaign (routes that move together)</label><input name="group" value="${esc(r.group||"")}" placeholder="Snow 1"></div>
     <div><label>Area</label><select name="areaId">${Object.entries(areas).map(([k,a])=>`<option value="${esc(k)}" ${r.areaId===k?"selected":""}>${esc(a.name)}</option>`).join("")}</select></div>
     <div><label>First day</label><input name="start" type="date" value="${esc(r.start||"")}"></div><div><label>Last day</label><input name="end" type="date" value="${esc(r.end||"")}"></div>
-    <div><label>Walker</label><select name="walker"><option value="">Unassigned</option>${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${r.walker===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select></div>
+    <div><label>Seat</label><input name="seat" list="seatOpts" value="${esc(r.seat||"")}" placeholder="Walker 1"><datalist id="seatOpts">${seatList().map(s=>`<option value="${esc(s)}"></option>`).join("")}</datalist></div>
+    <div><label>Person (change only when someone is covering)</label><select name="walker"><option value="">Follow the seat</option>${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${r.walker===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select></div>
     <div><label>Doors</label><input name="doors" type="number" min="0" value="${esc(r.doors||0)}"></div></div>
-    <label>Hanger</label><input name="hanger" value="${esc(r.hanger||"")}" placeholder="Snow hanger, North version">
+    <label>Flyer label the walker sees</label><input name="flyer" value="${esc(r.flyer||"")}" placeholder="Snow Pass 1">
+    <label>Print piece (office only, walkers do not see this)</label><input name="hanger" value="${esc(r.hanger||"")}" placeholder="Snow hanger">
     <label>Note for the walker</label><textarea name="note" rows="2">${esc(r.note||"")}</textarea>
     <label><input type="checkbox" name="floating" ${r.floating?"checked":""}> Dates float (moves with the weather)</label>
     <div class="actions">${id?'<button type="button" class="danger" id="delR" style="margin-right:auto">Delete</button>':""}<button type="button" data-close>Cancel</button><button class="primary">Save</button></div></form>`);
   $("#rf").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const k=id||store.key();
-    const v={name:f.name.value.trim(),group:f.group.value.trim(),areaId:f.areaId.value,start:f.start.value,end:f.end.value||f.start.value,walker:f.walker.value,doors:Number(f.doors.value)||0,hanger:f.hanger.value.trim(),note:f.note.value.trim(),floating:f.floating.checked};
+    const v={name:f.name.value.trim(),group:f.group.value.trim(),areaId:f.areaId.value,start:f.start.value,end:f.end.value||f.start.value,walker:f.walker.value||(f.seat.value.trim()?seatPerson(f.seat.value.trim()):""),seat:f.seat.value.trim(),doors:Number(f.doors.value)||0,hanger:f.hanger.value.trim(),flyer:f.flyer.value.trim(),note:f.note.value.trim(),floating:f.floating.checked};
+    if(id && r.days && r.start===v.start && (r.end||r.start)===v.end && Number(r.doors)===v.doors) v.days=r.days; if(r.office) v.office=r.office;
     await store.update({["routes/"+k]:v}); d.close(); toast("Route saved"); };
   if(id) $("#delR").onclick=async()=>{ if(!confirm("Delete this route and its check-offs?")) return; await store.update({["routes/"+id]:null,["routeChecks/"+id]:null,["routePhotos/"+id]:null}); d.close(); toast("Route deleted"); };
 }
@@ -428,7 +502,7 @@ function shiftCampaign(){
     <label>Days to move (negative moves earlier)</label><input name="n" type="number" value="7" required>
     <div class="actions"><button type="button" data-close>Cancel</button><button class="primary">Move</button></div></form>`);
   $("#sf").onsubmit=async e=>{ e.preventDefault(); const g=e.target.g.value, n=Number(e.target.n.value)||0, upd={};
-    Object.entries(routes).forEach(([id,r])=>{ if(r.group===g && r.start){ upd["routes/"+id+"/start"]=addDays(r.start,n); upd["routes/"+id+"/end"]=addDays(r.end||r.start,n); } });
+    Object.entries(routes).forEach(([id,r])=>{ if(r.group===g && r.start){ upd["routes/"+id+"/start"]=addDays(r.start,n); upd["routes/"+id+"/end"]=addDays(r.end||r.start,n); if(r.days){ const nd={}; Object.entries(r.days).forEach(([k,v])=>nd[addDays(k,n)]=v); upd["routes/"+id+"/days"]=nd; } } });
     await store.update(upd); d.close(); toast(`Moved ${g} by ${n} days`); };
 }
 
@@ -453,7 +527,7 @@ function renderReview(app){
 
 // ---------- admin: setup ----------
 function renderSetup(app){
-  app.innerHTML=`<div class="card"><h2>Walkers</h2><p class="muted">A walker signs in with the Google account listed here and sees only this page and the routes assigned to him. Walkers are kept on the same team list as everyone else, with the access level Walker. Nobody already on the list as an admin or crew member can be added here.</p>
+  app.innerHTML=`<div class="card"><h2>Walkers</h2><p class="muted">A walker signs in with the Google account listed here and sees only this page and the routes assigned to him. Add the person here, then put him in a seat on the Schedule tab. Walkers are kept on the same team list as everyone else, with the access level Walker. Nobody already on the list as an admin or crew member can be added here.</p>
     <table>${Object.entries(walkers).map(([k,w])=>`<tr><td><b>${esc(w.name)}</b><div class="muted">${esc(w.email)}</div></td><td style="text-align:right"><button class="small danger" data-rmw="${esc(k)}">Remove</button></td></tr>`).join("")||'<tr><td class="meta">No walkers yet.</td></tr>'}</table>
     <form id="wform" class="grid2"><div><label>Name</label><input name="name" required></div><div><label>Google email</label><input name="email" type="email" required></div><div class="actions" style="grid-column:1/-1"><button class="primary small">Add walker</button></div></form></div>
     <div class="card"><h2>Areas and streets</h2><p class="muted">An area's street list is shared by every route in that area. Change it once and every pass follows.</p>
@@ -472,12 +546,13 @@ function editArea(k){
   const a=areas[k]||{name:"New area",city:"Livonia",doors:0}; const st=Object.entries(a.streets||{}).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name));
   const d=openDlg(`<form id="af"><h2>Edit area</h2>
     <div class="grid2"><div><label>Area name</label><input name="name" value="${esc(a.name)}" required></div><div><label>City</label><input name="city" value="${esc(a.city||"")}"></div><div><label>Doors per pass</label><input name="doors" type="number" min="0" value="${esc(a.doors||0)}"></div></div>
+    <label>Start address for every pass (walkers tap it to open their map)</label><input name="start" value="${esc(a.start||"")}" placeholder="19000 Hickory Lane, Livonia, MI">
     <label>Streets (number sets the walking order; tick to remove)</label>
     <div class="scroll" style="max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:var(--r)"><table>${st.map(s=>`<tr><td style="width:30px"><input type="checkbox" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.name)}"></td><td style="width:74px"><input type="number" data-ord="${esc(s.id)}" value="${esc(s.order??"")}"></td><td><input data-nm="${esc(s.id)}" value="${esc(s.name)}"></td><td class="muted" style="white-space:nowrap">${parseGeo(s).length?"on map":"no line"}</td></tr>`).join("")||'<tr><td class="meta">No streets yet.</td></tr>'}</table></div>
     <label>Add streets (one per line)</label><textarea name="add" rows="3" placeholder="Hawthorn Street"></textarea>
     <label><input type="checkbox" name="find" checked> Look up new streets on the map</label>
     <div class="actions"><button type="button" class="danger" id="delA" style="margin-right:auto">Delete area</button><button type="button" data-close>Cancel</button><button class="primary">Save</button></div></form>`);
-  $("#af").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const upd={["routeAreas/"+k+"/name"]:f.name.value.trim(),["routeAreas/"+k+"/city"]:f.city.value.trim(),["routeAreas/"+k+"/doors"]:Number(f.doors.value)||0};
+  $("#af").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const upd={["routeAreas/"+k+"/name"]:f.name.value.trim(),["routeAreas/"+k+"/city"]:f.city.value.trim(),["routeAreas/"+k+"/doors"]:Number(f.doors.value)||0}; const sv=f.start.value.trim(); if(sv!==(a.start||"")){ upd["routeAreas/"+k+"/start"]=sv; upd["routeAreas/"+k+"/startLat"]=null; upd["routeAreas/"+k+"/startLon"]=null; }
     f.querySelectorAll("[data-nm]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.nm+"/name"]=i.value.trim());
     f.querySelectorAll("[data-ord]").forEach(i=>upd["routeAreas/"+k+"/streets/"+i.dataset.ord+"/order"]=i.value===""?null:Number(i.value));
     f.querySelectorAll("[data-del]:checked").forEach(i=>{ Object.keys(upd).forEach(p=>{ if(p.startsWith("routeAreas/"+k+"/streets/"+i.dataset.del+"/")) delete upd[p]; }); upd["routeAreas/"+k+"/streets/"+i.dataset.del]=null; });
@@ -515,7 +590,7 @@ if(DEMO){
     const upd={"allowed/walker,one@example,com":{name:"Walker One",email:"walker.one@example.com",tier:"walker"},"allowed/walker,two@example,com":{name:"Walker Two",email:"walker.two@example.com",tier:"walker"},
       ["allowed/"+emailKey(ADMIN_EMAIL)]:{name:"Russel",email:ADMIN_EMAIL,tier:"admin"}};
     Object.entries(s.areas||{}).forEach(([k,v])=>upd["routeAreas/"+k]=v);
-    Object.entries(s.routes||{}).forEach(([k,v],i)=>upd["routes/"+k]={...v,walker:i%2?"walker,two@example,com":"walker,one@example,com"});
+    Object.entries(s.routes||{}).forEach(([k,v],i)=>upd["routes/"+k]={...v,walker:v.seat==="Walker 2"?"walker,two@example,com":v.seat==="Walker 1"?"walker,one@example,com":""});
     await store.update(upd);
     const first=Object.values(s.routes||{}).map(r=>r.start).filter(Boolean).sort()[0]; if(first && first>curDate) curDate=first;
     enter(DEMO==="walker" ? {email:"walker.one@example.com",displayName:"Walker One"} : {email:ADMIN_EMAIL,displayName:"Russel"});
