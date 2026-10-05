@@ -303,7 +303,7 @@ const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return
 
 // ---------- navigation ----------
 function tabs(){
-  const t = isAdmin ? [["today","Day"],["week","Week"],["schedule","Schedule"],["review","Review"],["setup","Setup"]] : [["today","Today"],["week","Week"],["mylog","My days"]];
+  const t = isAdmin ? [["today","Day"],["week","Week"],["schedule","Schedule"],["review","Review"],["setup","Setup"]].concat(Object.values(routes).some(r=>r.training)?[["training","Training"]]:[]) : [["today","Today"],["week","Week"],["mylog","My days"]];
   $("#nav").innerHTML = t.map(([k,l])=>`<button data-v="${k}" class="${view===k&&!openRoute?"on":""}">${l}</button>`).join("")
     + (realAdmin && seatList().length ? `<select id="viewAs" class="viewas" aria-label="See the page as a walker"><option value="">Office view</option>${seatList().map(s=>`<option value="${esc(s)}" ${viewAs===s?"selected":""}>See as ${esc(s)}</option>`).join("")}${Object.values(routes).some(r=>r.training)?`<option value="__training" ${viewAs==="__training"?"selected":""}>Training route</option>`:""}</select>` : "");
   const pb=$("#previewBar"); pb.hidden=!viewAs;
@@ -311,7 +311,7 @@ function tabs(){
   else if(viewAs) pb.innerHTML=`Walker preview: this is what <b>${esc(viewAs)}</b>${seatPerson(viewAs)?" ("+esc(walkerName(seatPerson(viewAs)))+")":""} sees. Nothing is saved. <button class="small" id="exitPreview">Back to office view</button>`;
   if(viewAs) $("#exitPreview").onclick=()=>setViewAs("");
   const va=$("#viewAs"); if(va) va.onchange=()=>setViewAs(va.value);
-  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
+  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{ if(b.dataset.v==="training") return setViewAs("__training"); view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
 }
 function dateBar(){
   const sel = isAdmin ? `<select id="wf" style="width:auto"><option value="">All walkers</option>${seatList().map(s=>`<option value="seat:${esc(s)}" ${walkerFilter==="seat:"+s?"selected":""}>${esc(s)}</option>`).join("")}${Object.entries(walkers).map(([k,w])=>`<option value="${esc(k)}" ${walkerFilter===k?"selected":""}>${esc(w.name)}</option>`).join("")}</select>` : "";
