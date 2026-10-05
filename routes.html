@@ -256,7 +256,7 @@ async function enter(user){
   }
 }
 function leave(){ me=null; isAdmin=false; unsub.forEach(f=>f()); unsub=[]; $("#who").textContent=""; $("#signout").hidden=true; $("#nav").hidden=true; $("#navBtn").hidden=true; $("#gate").hidden=false; $("#app").hidden=true; }
-function mergeWalkers(){ walkers = {...legacyWalkers}; Object.entries(allowedWalkers).forEach(([k,v])=>{ if(v && v.tier==="walker") walkers[k]={name:v.name, email:v.email}; }); }
+function mergeWalkers(){ walkers = {...legacyWalkers}; Object.entries(allowedWalkers).forEach(([k,v])=>{ if(v && v.tier==="walker") walkers[k]={name:v.name, email:v.email, strava:v.strava||""}; }); }
 function attach(){
   unsub.forEach(f=>f()); unsub=[];
   const bind = (path, set) => unsub.push(store.on(path, v=>{ set(v||{}); render(); }));
@@ -290,6 +290,9 @@ const startLink = a => !a||!a.start ? "" : `<a href="https://www.google.com/maps
 const seatDoors = s => seatRoutes(s).reduce((n,[,r])=>n+(Number(r.doors)||0),0);
 // A light seat carries well under a full walker's share. It is the part-time or backup lane.
 function seatIsLight(s){ const all=seatList().map(seatDoors); const top=Math.max(0,...all); return top>0 && seatDoors(s) < top*0.5; }
+// Strava: accept a username or a pasted profile link, and link to the profile.
+const stravaClean = s => String(s||"").trim().replace(/^https?:\/\/(www\.)?strava\.com\/athletes\//i,"").replace(/^@/,"").replace(/[\/?#].*$/,"");
+const stravaLink = s => s ? `<a href="https://www.strava.com/athletes/${encodeURIComponent(s)}" target="_blank" rel="noopener">Strava: ${esc(s)}</a>` : "";
 const whoLabel = r => r.seat ? `${r.seat} &middot; ${r.walker?esc(walkerName(r.walker)):"no one assigned"}` : esc(walkerName(r.walker));
 const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
@@ -547,7 +550,7 @@ function renderReview(app){
   h+=ws.map(([k,w])=>{ const L=(logs[curDate]||{})[k];
     const done=[]; Object.entries(checks).forEach(([rid,cs])=>Object.entries(cs).forEach(([sid,c])=>{ if(c.by===k && c.date===curDate && routes[rid]) done.push({rid,sid,c,name:(areas[routes[rid].areaId]?.streets||{})[sid]?.name||sid}); }));
     done.sort((a,b)=>a.c.at-b.c.at);
-    return `<div class="card"><h2>${esc(w.name)}</h2>
+    return `<div class="card"><h2>${esc(w.name)}</h2>${w.strava?`<div class="muted" style="margin:-4px 0 6px">${stravaLink(w.strava)}</div>`:""}
       ${L?`<div class="meta"><b>${Number(L.count||0).toLocaleString()}</b> hangers &middot; ${esc(L.start||"?")} to ${esc(L.end||"?")} &middot; ${money((L.count||0)*RATE)} &middot; ${L.strava?`<a href="${esc(L.strava)}" target="_blank" rel="noopener">Open Strava recording</a>`:""} ${Object.keys(L.walks||{}).filter(rid=>routes[rid]).map(rid=>`<button class="small" data-pv="${esc(rid)}|walk_${curDate}">Walk: ${esc(flyerOf(routes[rid]))}</button>`).join(" ")||(L.strava?"":'<span class="chip warn">No walk added</span>')}</div>${L.note?`<div class="muted">${esc(L.note)}</div>`:""}`:'<div class="meta"><span class="chip warn">No day report</span></div>'}
       <div class="meta" style="margin-top:8px">${done.length} streets checked off, ${done.filter(x=>x.c.photo).length} with a photo</div>
       ${done.length?`<div class="scroll"><table>${done.map(x=>`<tr><td>${fmtTime(x.c.at)}</td><td>${esc(x.name)}<div class="muted">${esc(routes[x.rid].name)}</div></td><td>${x.c.photo?`<button class="small" data-pv="${esc(x.rid)}|${esc(x.sid)}">Photo</button>`:'<span class="chip warn">no photo</span>'}</td></tr>`).join("")}</table></div>`:""}</div>`; }).join("") || `<div class="card"><p class="meta">No walkers yet. Add them in Setup.</p></div>`;
@@ -562,15 +565,16 @@ function renderReview(app){
 // ---------- admin: setup ----------
 function renderSetup(app){
   app.innerHTML=`<div class="card"><h2>Walkers</h2><p class="muted">A walker signs in with the Google account listed here and sees only this page and the routes assigned to him. Add the person here, then put him in a seat on the Schedule tab. Walkers are kept on the same team list as everyone else, with the access level Walker. Nobody already on the list as an admin or crew member can be added here.</p>
-    <table>${Object.entries(walkers).map(([k,w])=>`<tr><td><b>${esc(w.name)}</b><div class="muted">${esc(w.email)}</div></td><td style="text-align:right"><button class="small danger" data-rmw="${esc(k)}">Remove</button></td></tr>`).join("")||'<tr><td class="meta">No walkers yet.</td></tr>'}</table>
-    <form id="wform" class="grid2"><div><label>Name</label><input name="name" required></div><div><label>Google email</label><input name="email" type="email" required></div><div class="actions" style="grid-column:1/-1"><button class="primary small">Add walker</button></div></form></div>
+    <table>${Object.entries(walkers).map(([k,w])=>`<tr><td><b>${esc(w.name)}</b><div class="muted">${esc(w.email)}</div>${w.strava?`<div class="muted">${stravaLink(w.strava)}</div>`:""}</td><td style="text-align:right;white-space:nowrap">${allowedWalkers[k]?.tier==="walker"?`<input data-strava="${esc(k)}" value="${esc(w.strava||"")}" placeholder="Strava username" aria-label="Strava username for ${esc(w.name)}" style="width:150px;display:inline-block"> <button class="small" data-savestrava="${esc(k)}">Save</button> `:""}<button class="small danger" data-rmw="${esc(k)}">Remove</button></td></tr>`).join("")||'<tr><td class="meta">No walkers yet.</td></tr>'}</table>
+    <form id="wform" class="grid2"><div><label>Name</label><input name="name" required></div><div><label>Google email</label><input name="email" type="email" required></div><div><label>Strava username (from the signed agreement)</label><input name="strava" placeholder="username or profile link"></div><div class="actions" style="grid-column:1/-1"><button class="primary small">Add walker</button></div></form></div>
     <div class="card"><h2>Areas and streets</h2><p class="muted">An area's street list is shared by every route in that area. Change it once and every pass follows.</p>
     <table>${Object.entries(areas).map(([k,a])=>`<tr><td><b>${esc(a.name)}</b><div class="muted">${Object.keys(a.streets||{}).length} streets &middot; ${Number(a.doors||0).toLocaleString()} doors &middot; ${esc(a.city||"")}</div>${a.note?`<div class="muted">${esc(a.note)}</div>`:""}</td><td style="text-align:right"><button class="small" data-area="${esc(k)}">Edit streets</button></td></tr>`).join("")||'<tr><td class="meta">No areas yet.</td></tr>'}</table>
     <div class="actions"><button class="small" id="addArea">Add area</button></div></div>
     <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Load starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Starting data loads the areas, their streets, and the 33 scheduled routes. It does not touch walkers, check-offs, photos, or day reports.</p></div>`;
   $("#wform").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const em=f.email.value.trim().toLowerCase(); const k=emailKey(em);
     const cur=allowedWalkers[k]; if(cur && cur.tier && cur.tier!=="walker") return toast(`${em} is already on the team list as ${cur.tier}. Change it on the Projects page Team tab.`);
-    await store.update({["allowed/"+k]:{name:f.name.value.trim(),email:em,tier:"walker"}}); toast("Walker added"); };
+    await store.update({["allowed/"+k]:{name:f.name.value.trim(),email:em,tier:"walker",strava:stravaClean(f.strava.value)}}); toast("Walker added"); };
+  app.querySelectorAll("[data-savestrava]").forEach(b=>b.onclick=async()=>{ const k=b.dataset.savestrava; const v=stravaClean(app.querySelector(`[data-strava="${CSS.escape(k)}"]`).value); await store.update({["allowed/"+k+"/strava"]:v}); toast(v?"Strava saved":"Strava cleared"); });
   app.querySelectorAll("[data-rmw]").forEach(b=>b.onclick=async()=>{ if(!confirm("Remove this walker? His reports stay on file.")) return; const k=b.dataset.rmw; const upd={}; if(allowedWalkers[k]?.tier==="walker") upd["allowed/"+k]=null; if(legacyWalkers[k]) upd["walkers/"+k]=null; await store.update(upd); });
   app.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>editArea(b.dataset.area));
   $("#addArea").onclick=async()=>{ const k=store.key(); await store.update({["routeAreas/"+k]:{name:"New area",city:"Livonia",doors:0}}); editArea(k); };
