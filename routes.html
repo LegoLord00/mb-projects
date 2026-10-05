@@ -367,7 +367,7 @@ function reportForm(d){
     <label>Your walk</label>
     <p class="muted" style="margin:0 0 6px">Finish your Strava recording, take a screenshot of the map with the distance and time showing, and add it here.</p>
     ${routesOn(d).map(([rid,r])=>{ const has=(L.walks||{})[rid]; return `<div class="bar" style="margin:0 0 6px"><label class="iconbtn small" style="margin:0;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink)">${has?"Replace walk screenshot":"Add walk screenshot"}<input type="file" accept="image/*" data-walk="${esc(rid)}" hidden></label><span class="meta">${esc(flyerOf(r))}, ${esc((areas[r.areaId]||{}).name||"")}</span>${has?`<span class="chip ok">Added ${fmtTime(has)}</span><button type="button" class="small" data-walkview="${esc(rid)}">View</button>`:'<span class="chip warn">Not added</span>'}</div>`; }).join("")||'<p class="muted">No route on this day.</p>'}
-    <label>Notes (skipped houses, problems, a partial route and the last address hung)</label><textarea name="note" rows="2">${esc(L.note||"")}</textarea>
+    <label><b>Last address hung</b> <span class="chip warn">Required</span> then any notes (skipped houses, problems, a partial route)</label><textarea name="note" rows="2" required placeholder="Last address hung: 19234 Hickory Lane">${esc(L.note||"")}</textarea>
     <div class="actions">${L.at?`<span class="muted" style="margin-right:auto">Saved ${fmtTime(L.at)}</span>`:""}<button class="primary">Save report</button></div></form>`;
 }
 function wireReport(d){
