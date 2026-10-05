@@ -219,11 +219,12 @@ function setViewAs(s){
   if(!realAdmin) return;
   if(!meReal) meReal=me;
   viewAs=s||""; isAdmin=!viewAs;
-  if(viewAs){ const k=seatPerson(viewAs); me={...meReal, key:k||"preview", name:k?walkerName(k):viewAs}; }
+  if(viewAs==="__training") me=meReal;
+  else if(viewAs){ const k=seatPerson(viewAs); me={...meReal, key:k||"preview", name:k?walkerName(k):viewAs}; }
   else me=meReal;
   view="today"; openRoute=null; walkerFilter=""; render(); window.scrollTo(0,0);
 }
-const previewOnly = () => { if(viewAs){ toast("Walker preview. Nothing is saved."); return true; } return false; };
+const previewOnly = () => { if(viewAs && viewAs!=="__training"){ toast("Walker preview. Nothing is saved."); return true; } return false; };
 let areas={}, routes={}, checks={}, logs={}, walkers={}, supply={};
 let allowedWalkers={}, legacyWalkers={};
 let view="today", curDate=today(), openRoute=null, walkerFilter="";
@@ -276,7 +277,7 @@ function attach(){
 const walkerName = k => !k ? "Unassigned" : (walkers[k]?.name || k.replace(/,/g,"."));
 // Seats: a route belongs to a seat ("Walker 1"). A person is put in a seat, and every open route in that seat follows.
 // A seat exists as long as one route carries its name, so adding a seat is typing a new name on a route.
-const seatList = () => [...new Set(Object.values(routes).map(r=>r.seat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+const seatList = () => [...new Set(Object.values(routes).filter(r=>!r.training).map(r=>r.seat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
 const seatRoutes = s => Object.entries(routes).filter(([,r])=>r.seat===s);
 const routeOpen = (r,from) => !r.start || (r.end||r.start)>=from;
 function seatPerson(s){ const t=today(); const rs=seatRoutes(s).map(([,r])=>r).filter(r=>routeOpen(r,t)).sort((a,b)=>(a.start||"9").localeCompare(b.start||"9")); const hit=rs.find(r=>r.walker); return hit?hit.walker:""; }
@@ -297,15 +298,17 @@ const whoLabel = r => r.seat ? `${r.seat} &middot; ${r.walker?esc(walkerName(r.w
 const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
 const mineOrAll = r => viewAs ? r.seat===viewAs : isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
-const routesOn = d => Object.entries(routes).filter(([,r])=>r.start && r.start<=d && d<=(r.end||r.start) && (!r.days || r.days[d]) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
+const routesOn = d => viewAs==="__training" ? Object.entries(routes).filter(([,r])=>r.training) : Object.entries(routes).filter(([,r])=>!r.training && r.start && r.start<=d && d<=(r.end||r.start) && (!r.days || r.days[d]) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
 const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return []; } };
 
 // ---------- navigation ----------
 function tabs(){
   const t = isAdmin ? [["today","Day"],["week","Week"],["schedule","Schedule"],["review","Review"],["setup","Setup"]] : [["today","Today"],["week","Week"],["mylog","My days"]];
   $("#nav").innerHTML = t.map(([k,l])=>`<button data-v="${k}" class="${view===k&&!openRoute?"on":""}">${l}</button>`).join("")
-    + (realAdmin && seatList().length ? `<select id="viewAs" class="viewas" aria-label="See the page as a walker"><option value="">Office view</option>${seatList().map(s=>`<option value="${esc(s)}" ${viewAs===s?"selected":""}>See as ${esc(s)}</option>`).join("")}</select>` : "");
-  const pb=$("#previewBar"); pb.hidden=!viewAs; if(viewAs) pb.innerHTML=`Walker preview: this is what <b>${esc(viewAs)}</b>${seatPerson(viewAs)?" ("+esc(walkerName(seatPerson(viewAs)))+")":""} sees. Nothing is saved. <button class="small" id="exitPreview">Back to office view</button>`;
+    + (realAdmin && seatList().length ? `<select id="viewAs" class="viewas" aria-label="See the page as a walker"><option value="">Office view</option>${seatList().map(s=>`<option value="${esc(s)}" ${viewAs===s?"selected":""}>See as ${esc(s)}</option>`).join("")}${Object.values(routes).some(r=>r.training)?`<option value="__training" ${viewAs==="__training"?"selected":""}>Training route</option>`:""}</select>` : "");
+  const pb=$("#previewBar"); pb.hidden=!viewAs;
+  if(viewAs==="__training"){ pb.innerHTML=`Training mode: you are a walker on the practice route. Check-offs, photos and the report save for real. <button class="small" id="resetTraining">Clear training data</button> <button class="small" id="exitPreview">Back to office view</button>`; $("#resetTraining").onclick=resetTraining; }
+  else if(viewAs) pb.innerHTML=`Walker preview: this is what <b>${esc(viewAs)}</b>${seatPerson(viewAs)?" ("+esc(walkerName(seatPerson(viewAs)))+")":""} sees. Nothing is saved. <button class="small" id="exitPreview">Back to office view</button>`;
   if(viewAs) $("#exitPreview").onclick=()=>setViewAs("");
   const va=$("#viewAs"); if(va) va.onchange=()=>setViewAs(va.value);
   $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{ view=b.dataset.v; openRoute=null; render(); window.scrollTo(0,0); });
@@ -351,7 +354,7 @@ function renderToday(app){
     h += `<div class="lanes">${seats.map(s=>{ const mine=rs.filter(([,r])=>r.seat===s); const k=(mine.find(([,r])=>r.walker)||[])[1]?.walker||seatPerson(s); const t=mine.reduce((n,[,r])=>n+hoursOn(r,curDate),0); return lane(s, (k?esc(walkerName(k)):"No one assigned")+(t?` &middot; <b>about ${hrs(t)} hrs</b>`:""), mine, seatIsLight(s)); }).join("")}${rs.some(([,r])=>!r.seat)?lane("No seat","Give these routes a seat on the Schedule tab",rs.filter(([,r])=>!r.seat),true):""}</div>`;
   } else
   h += rs.length ? rs.map(([id,r])=>routeCard(id,r)).join("") : `<div class="card"><p class="meta">No routes on this day${isAdmin&&!Object.keys(routes).length?". Open Setup to load the starting data.":"."}</p></div>`;
-  if(!isAdmin && rs.length){ const t=rs.reduce((n,[,r])=>n+hoursOn(r,curDate),0); h = h.replace('</div>', `</div><p class="meta"><b>About ${hrs(t)} hours on ${fmtDay(curDate)}</b> at ${PACE} doors an hour.</p>`); }
+  if(!isAdmin && rs.length && rs.some(([,r])=>hoursOn(r,curDate))){ const t=rs.reduce((n,[,r])=>n+hoursOn(r,curDate),0); h = h.replace('</div>', `</div><p class="meta"><b>About ${hrs(t)} hours on ${fmtDay(curDate)}</b> at ${PACE} doors an hour.</p>`); }
   if(!isAdmin) h += reportForm(curDate);
   app.innerHTML=h; wireDateBar(1); wireCards(); if(!isAdmin) wireReport(curDate);
 }
@@ -479,7 +482,7 @@ function openDlg(html){ const d=$("#dlg"); d.innerHTML=html; d.querySelectorAll(
 
 // ---------- admin: schedule ----------
 function renderSchedule(app){
-  const list=Object.entries(routes).sort((a,b)=>(a[1].start||"0").localeCompare(b[1].start||"0")||a[1].name.localeCompare(b[1].name));
+  const list=Object.entries(routes).filter(([,r])=>!r.training).sort((a,b)=>(a[1].start||"0").localeCompare(b[1].start||"0")||a[1].name.localeCompare(b[1].name));
   const doors=list.reduce((n,[,r])=>n+(Number(r.doors)||0),0);
   app.innerHTML=`<div class="bar"><span class="date">Schedule</span><button class="small" id="shiftBtn">Move a campaign</button><button class="primary small" id="addRoute">Add route</button></div>
     <p class="meta">${list.length} routes, ${doors.toLocaleString()} doors, about ${Math.round(doors/PACE)} hours, ${money(doors*RATE)} in distributor pay. Tap a row to change it.</p>
@@ -494,7 +497,7 @@ function renderSchedule(app){
 function seatCard(){
   const seats=seatList(); const t=today();
   const people=Object.entries(walkers).map(([k,w])=>[k,w.name]).sort((a,b)=>a[1].localeCompare(b[1]));
-  const loose=Object.values(routes).filter(r=>!r.seat).length;
+  const loose=Object.values(routes).filter(r=>!r.seat && !r.training).length;
   return `<div class="card"><h2>Walker seats</h2><p class="muted">Routes belong to a seat. Put a person in a seat and every route in it from the chosen day forward goes to that person; finished routes keep whoever walked them. Add people under Setup. To add a seat, type a new seat name on a route.</p>
     <div class="scroll"><table><tr><th>Seat</th><th>Routes</th><th>Doors</th><th>Hours</th><th>Pay</th><th>Person</th><th>From</th><th></th></tr>
     ${seats.map((s,i)=>{ const rs=seatRoutes(s).map(([,r])=>r); const doors=rs.reduce((n,r)=>n+(Number(r.doors)||0),0); const cur=seatPerson(s); const left=rs.filter(r=>routeOpen(r,t)).length;
@@ -510,6 +513,41 @@ async function assignSeat(i){
   const upd={}; seatRoutes(s).forEach(([id,r])=>{ if(routeOpen(r,from)) upd["routes/"+id+"/walker"]=who; });
   const n=Object.keys(upd).length; if(!n) return toast("No routes in "+s+" from that day forward");
   await store.update(upd); toast(`${s}: ${n} routes ${who?"assigned to "+walkerName(who):"cleared"}`);
+}
+async function resetTraining(){
+  const upd={}; Object.entries(routes).forEach(([id,r])=>{ if(r.training){ upd["routeChecks/"+id]=null; upd["routePhotos/"+id]=null; } });
+  const k=(meReal||me).key, d=today(); upd["routeLogs/"+d+"/"+k]=null; upd["routeLogsByWalker/"+k+"/"+d]=null;
+  await store.update(upd); toast("Training data cleared");
+}
+// ---------- admin: system check ----------
+async function systemCheck(){
+  const rows=[]; const add=(name,ok,detail)=>{ rows.push({name,ok,detail:detail||""}); paint(); };
+  const d=openDlg(`<h2>System check</h2><p class="muted">Runs under the office account. It proves the page, the database and the map work. A walker's own sign-in is only proven on a walker's phone.</p><div id="chk"></div><div class="actions"><button data-close>Close</button></div>`);
+  function paint(){ const el=$("#chk"); if(el) el.innerHTML=`<table>${rows.map(r=>`<tr><td><span class="chip ${r.ok===true?"ok":r.ok===null?"":"warn"}">${r.ok===true?"Pass":r.ok===null?"Note":"Fail"}</span></td><td><b>${esc(r.name)}</b>${r.detail?`<div class="muted">${esc(r.detail)}</div>`:""}</td></tr>`).join("")}</table>`; }
+  const k=(meReal||me).key; const t="check_"+Date.now();
+  const step=async(name,fn)=>{ try{ const r=await Promise.race([fn(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("No answer after 20 seconds")),20000))]); add(name,true,r||""); }catch(e){ add(name,false,e.message||String(e)); } };
+  add("Signed in", !!me, (meReal||me).email);
+  await step("Read routes and areas", async()=>{ const r=await store.get("routes"), a=await store.get("routeAreas"); if(!r||!a) throw new Error("Nothing came back"); return Object.keys(r).length+" routes, "+Object.keys(a).length+" areas"; });
+  await step("Read the team list", async()=>{ const a=await store.get("allowed"); return Object.values(a||{}).filter(x=>x&&x.tier==="walker").length+" walkers on the list"; });
+  const rid=(Object.entries(routes).find(([,r])=>r.training)||[])[0];
+  if(!rid) add("Training route", false, "No training route is loaded. Press Load starting data."); else {
+    await step("Street check-off saves and clears", async()=>{ const p="routeChecks/"+rid+"/"+t; await store.update({[p]:{by:k,at:Date.now(),date:today()}}); const v=await store.get(p); await store.update({[p]:null}); if(!v) throw new Error("Saved but could not be read back"); });
+    await step("Photo shrinks, saves and clears", async()=>{ const cv=document.createElement("canvas"); cv.width=1600; cv.height=1200; const g=cv.getContext("2d"); g.fillStyle="#1f4e8c"; g.fillRect(0,0,1600,1200); const blob=await new Promise(r=>cv.toBlob(r,"image/png")); const data=await shrinkImage(blob); const p="routePhotos/"+rid+"/"+t; await store.update({[p]:{data,at:Date.now(),by:k}}); const v=await store.get(p); await store.update({[p]:null}); if(!v||!v.data) throw new Error("Saved but could not be read back"); return Math.round(data.length/1024)+" KB after shrinking"; });
+    await step("Day report and walk upload save and clear", async()=>{ const p1="routeLogs/"+t+"/"+k, p2="routeLogsByWalker/"+k+"/"+t; await store.update({[p1]:{count:1,at:Date.now(),name:"System check",walks:{[rid]:Date.now()}},[p2]:{count:1,at:Date.now(),name:"System check"}}); const v=await store.get(p1), w=await store.get(p2); await store.update({[p1]:null,[p2]:null}); if(!v||!w) throw new Error("Saved but could not be read back"); });
+  }
+  await step("Starting data file", async()=>{ const s=await (await fetch(SEED_URL,{cache:"no-store"})).json(); return Object.keys(s.routes||{}).length+" routes in the file"; });
+  await step("Map library", async()=>{ if(typeof L==="undefined") throw new Error("The map script did not load"); });
+  await step("Map background", ()=>new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(); i.onerror=()=>rej(new Error("Map tiles did not load")); i.src="https://tile.openstreetmap.org/15/8797/12099.png?"+Date.now(); }));
+  await step("Camera and photo picker", async()=>{ const i=document.createElement("input"); i.type="file"; if(i.disabled) throw new Error("This browser blocks file inputs"); return ("capture" in i)?"This device opens the camera directly":"This device shows a photo picker (normal on a computer)"; });
+  // Schedule health: notes, not failures
+  const real=Object.values(routes).filter(r=>!r.training);
+  const noSeat=real.filter(r=>!r.seat).length, noDate=real.filter(r=>!r.start).length, open=real.filter(r=>routeOpen(r,today())&&!r.walker).length;
+  add("Routes without a seat", noSeat?null:true, noSeat?noSeat+" routes":"");
+  add("Routes without dates", noDate?null:true, noDate?noDate+" routes":"");
+  add("Routes still to walk with no person assigned", open?null:true, open?open+" routes. Assign people on the Schedule tab.":"");
+  const noStart=Object.values(areas).filter(a=>Object.keys(a.streets||{}).length&&!a.start).length; add("Areas without a start address", noStart?null:true, noStart?noStart+" areas":"");
+  const noStrava=Object.values(walkers).filter(w=>!w.strava).length; add("Walkers without a Strava username", noStrava?null:true, noStrava?noStrava+" walkers":"");
+  const bad=rows.filter(r=>r.ok===false).length; toast(bad?bad+" checks failed":"All checks passed");
 }
 function editRoute(id){
   const r=id?routes[id]:{name:"",group:"",areaId:Object.keys(areas)[0]||"",hanger:"",flyer:"",start:curDate,end:curDate,walker:"",seat:"",doors:0,note:""};
@@ -556,7 +594,8 @@ function renderReview(app){
       ${done.length?`<div class="scroll"><table>${done.map(x=>`<tr><td>${fmtTime(x.c.at)}</td><td>${esc(x.name)}<div class="muted">${esc(routes[x.rid].name)}</div></td><td>${x.c.photo?`<button class="small" data-pv="${esc(x.rid)}|${esc(x.sid)}">Photo</button>`:'<span class="chip warn">no photo</span>'}</td></tr>`).join("")}</table></div>`:""}</div>`; }).join("") || `<div class="card"><p class="meta">No walkers yet. Add them in Setup.</p></div>`;
   h+=`<div class="card"><h2>Week of ${fmtDay(mon)}</h2><p class="muted">Signed out minus returned is the count you pay on. It should match what the walker reported.</p><div class="scroll"><table><tr><th>Walker</th><th>Reported</th><th>Hours</th><th>Pace</th><th>Signed out</th><th>Returned</th><th>Counted</th><th>Pay</th></tr>
     ${Object.entries(walkers).map(([k,w])=>{ const n=weekNumbers(k,mon), s=(supply[mon]||{})[k]||{}; const counted=(s.out!=null&&s.back!=null&&s.out!==""&&s.back!=="")?Number(s.out)-Number(s.back):null; const off=counted!=null&&counted!==n.count;
-      return `<tr><td>${esc(w.name)}</td><td>${n.count.toLocaleString()}</td><td>${n.hours.toFixed(1)}</td><td>${n.hours?Math.round(n.count/n.hours):0}/hr</td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|out" value="${esc(s.out??"")}"></td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|back" value="${esc(s.back??"")}"></td><td>${counted==null?"":`<span class="chip ${off?"warn":"ok"}">${counted.toLocaleString()}</span>`}</td><td><b>${money((counted??n.count)*RATE)}</b></td></tr>`; }).join("")}</table></div></div>`;
+      const plan=Object.values(routes).filter(r=>!r.training&&r.walker===k).reduce((t,r)=>{ let x=0; for(let i=0;i<7;i++) x+=hoursOn(r,addDays(mon,i)); return t+Math.min(Number(r.doors)||0, Math.round(x*PACE)); },0);
+      return `<tr><td>${esc(w.name)}<div class="muted">Planned this week: ${plan.toLocaleString()} hangers</div></td><td>${n.count.toLocaleString()}</td><td>${n.hours.toFixed(1)}</td><td>${n.hours?Math.round(n.count/n.hours):0}/hr</td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|out" value="${esc(s.out??"")}"></td><td><input type="number" min="0" style="width:90px" data-sup="${esc(k)}|back" value="${esc(s.back??"")}"></td><td>${counted==null?"":`<span class="chip ${off?"warn":"ok"}">${counted.toLocaleString()}</span>`}</td><td><b>${money((counted??n.count)*RATE)}</b></td></tr>`; }).join("")}</table></div></div>`;
   app.innerHTML=h; wireDateBar(1);
   app.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{ const [r,s]=b.dataset.pv.split("|"); viewPhoto(r,s); });
   app.querySelectorAll("[data-sup]").forEach(i=>i.onchange=()=>{ const [k,f]=i.dataset.sup.split("|"); store.update({["routeSupply/"+mon+"/"+k+"/"+f]: i.value===""?null:Number(i.value)}); });
@@ -570,7 +609,8 @@ function renderSetup(app){
     <div class="card"><h2>Areas and streets</h2><p class="muted">An area's street list is shared by every route in that area. Change it once and every pass follows.</p>
     <table>${Object.entries(areas).map(([k,a])=>`<tr><td><b>${esc(a.name)}</b><div class="muted">${Object.keys(a.streets||{}).length} streets &middot; ${Number(a.doors||0).toLocaleString()} doors &middot; ${esc(a.city||"")}</div>${a.note?`<div class="muted">${esc(a.note)}</div>`:""}</td><td style="text-align:right"><button class="small" data-area="${esc(k)}">Edit streets</button></td></tr>`).join("")||'<tr><td class="meta">No areas yet.</td></tr>'}</table>
     <div class="actions"><button class="small" id="addArea">Add area</button></div></div>
-    <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Load starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Starting data loads the areas, their streets, and the 33 scheduled routes. It does not touch walkers, check-offs, photos, or day reports.</p></div>`;
+    <div class="card"><h2>Training and system check</h2><p class="muted">The training route is two easy streets assigned to you, for showing a new walker how to check off a street, take the photo and file the report. The system check tests that every part of the page is working.</p><div class="bar"><button class="small" id="goTraining">Open the training route</button><button class="small" id="sysCheck">Run system check</button></div></div>
+    <div class="card"><h2>Data</h2><div class="bar"><button class="small" id="seed">Load starting data</button><button class="small" id="backup">Download backup</button></div><p class="muted">Starting data loads the areas, their streets, the scheduled routes and the training route. It does not touch walkers, check-offs, photos, or day reports.</p></div>`;
   $("#wform").onsubmit=async e=>{ e.preventDefault(); const f=e.target; const em=f.email.value.trim().toLowerCase(); const k=emailKey(em);
     const cur=allowedWalkers[k]; if(cur && cur.tier && cur.tier!=="walker") return toast(`${em} is already on the team list as ${cur.tier}. Change it on the Projects page Team tab.`);
     await store.update({["allowed/"+k]:{name:f.name.value.trim(),email:em,tier:"walker",strava:stravaClean(f.strava.value)}}); toast("Walker added"); };
@@ -579,6 +619,8 @@ function renderSetup(app){
   app.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>editArea(b.dataset.area));
   $("#addArea").onclick=async()=>{ const k=store.key(); await store.update({["routeAreas/"+k]:{name:"New area",city:"Livonia",doors:0}}); editArea(k); };
   $("#seed").onclick=loadSeed; $("#backup").onclick=backup;
+  $("#goTraining").onclick=()=>Object.values(routes).some(r=>r.training)?setViewAs("__training"):toast("No training route yet. Press Load starting data.");
+  $("#sysCheck").onclick=systemCheck;
 }
 function editArea(k){
   const a=areas[k]||{name:"New area",city:"Livonia",doors:0}; const st=Object.entries(a.streets||{}).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name));
@@ -628,7 +670,7 @@ if(DEMO){
     const upd={"allowed/walker,one@example,com":{name:"Walker One",email:"walker.one@example.com",tier:"walker"},"allowed/walker,two@example,com":{name:"Walker Two",email:"walker.two@example.com",tier:"walker"},
       ["allowed/"+emailKey(ADMIN_EMAIL)]:{name:"Russel",email:ADMIN_EMAIL,tier:"admin"}};
     Object.entries(s.areas||{}).forEach(([k,v])=>upd["routeAreas/"+k]=v);
-    Object.entries(s.routes||{}).forEach(([k,v],i)=>upd["routes/"+k]={...v,walker:v.seat==="Walker 2"?"walker,two@example,com":v.seat==="Walker 1"?"walker,one@example,com":""});
+    Object.entries(s.routes||{}).forEach(([k,v],i)=>upd["routes/"+k]={...v,walker:v.training?v.walker:v.seat==="Walker 2"?"walker,two@example,com":v.seat==="Walker 1"?"walker,one@example,com":""});
     await store.update(upd);
     const first=Object.values(s.routes||{}).map(r=>r.start).filter(Boolean).sort()[0]; if(first && first>curDate) curDate=first;
     enter(DEMO==="walker" ? {email:"walker.one@example.com",displayName:"Walker One"} : {email:ADMIN_EMAIL,displayName:"Russel"});
