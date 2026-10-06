@@ -305,7 +305,7 @@ const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.e
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
 const mineOrAll = r => viewAs ? r.seat===viewAs : isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
 // Doors still owed from days before today: what the plan said should be hung by last night, less what was hung.
-// "Hung" is the larger of the walker's day reports (split across his routes that day by planned hours) and the share of streets checked off.
+// "Hung" is the walker's day reports (split across his routes that day by planned hours). With no report at all it falls back to the share of streets checked off.
 function behindDoors(id,r,d){
   if(d!==today() || r.training || !r.start || r.start>=d) return 0;
   const doors=Number(r.doors)||0, end=r.end||r.start; let planned=0, reported=0;
@@ -313,7 +313,7 @@ function behindDoors(id,r,d){
     const L=r.walker&&(logs[x]||{})[r.walker]; if(L&&L.count){ const all=Object.values(routes).filter(q=>!q.training&&q.walker===r.walker).reduce((n,q)=>n+hoursOn(q,x),0); reported+=Number(L.count)*hx/(all||hx); } }
   if(end<d) planned=doors;
   const p=progress(id); if(p.total&&p.done===p.total) return 0;
-  const hung=Math.min(doors, Math.max(reported, p.total?doors*p.done/p.total:0));
+  const hung=Math.min(doors, reported>0 ? reported : (p.total?doors*p.done/p.total:0));
   const owe=Math.round(Math.min(planned,doors)-hung); return owe>=10?owe:0;
 }
 const behindHrs = (id,r,d) => behindDoors(id,r,d)/PACE;
