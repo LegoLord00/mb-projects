@@ -342,6 +342,8 @@ const wireCards = () => document.querySelectorAll("[data-open]").forEach(el=>el.
 // ---------- views ----------
 function render(){
   if(!me) return;
+  const ae=document.activeElement, fk=ae&&ae.form&&ae.form.id==="report"&&ae.name?ae.name:null; let ss=null,se=null; try{ ss=ae.selectionStart; se=ae.selectionEnd; }catch(e){}
+  if(fk) setTimeout(()=>{ const f=$("#report"), el=f&&f.elements[fk]; if(el&&document.activeElement!==el){ el.focus({preventScroll:true}); try{ if(ss!=null) el.setSelectionRange(ss,se); }catch(e){} } },0);
   tabs();
   const app=$("#app");
   if(openRoute && routes[openRoute]) return renderRoute(app);
@@ -365,8 +367,9 @@ function renderToday(app){
   app.innerHTML=h; wireDateBar(1); wireCards(); if(!isAdmin) wireReport(curDate);
 }
 
+const reportDraft={};
 function reportForm(d){
-  const L=(logs[d]||{})[me.key]||{};
+  const L={...((logs[d]||{})[me.key]||{}), ...(reportDraft[d+"|"+me.key]||{})};
   return `<form class="card" id="report"><h2>Day report, ${fmtDay(d)}</h2>
     <p class="muted">Fill this in at the end of the day. You can change it until Russel closes the week.</p>
     <div class="grid2"><div><label>Hangers hung today</label><input name="count" type="number" inputmode="numeric" min="0" value="${esc(L.count??"")}" required></div>
@@ -382,9 +385,12 @@ function reportForm(d){
 function wireReport(d){
   document.querySelectorAll("[data-walk]").forEach(i=>i.onchange=()=>i.files[0]&&addWalk(d,i.dataset.walk,i.files[0]));
   document.querySelectorAll("[data-walkview]").forEach(b=>b.onclick=()=>viewPhoto(b.dataset.walkview,"walk_"+d));
+  const dk=d+"|"+me.key, rf=$("#report");
+  rf.oninput=()=>{ reportDraft[dk]={count:rf.count.value, strava:rf.strava.value, start:rf.start.value, end:rf.end.value, note:rf.note.value}; };
   $("#report").onsubmit=async e=>{ e.preventDefault(); if(previewOnly()) return; const f=e.target;
     const v={count:Number(f.count.value)||0, strava:f.strava.value.trim(), start:f.start.value, end:f.end.value, note:f.note.value.trim(), at:Date.now(), name:me.name};
     const keep=((logs[d]||{})[me.key]||{}).walks; if(keep) v.walks=keep;
+    delete reportDraft[dk];
     await store.update({["routeLogs/"+d+"/"+me.key]:v, ["routeLogsByWalker/"+me.key+"/"+d]:v}); toast("Report saved"); };
 }
 
