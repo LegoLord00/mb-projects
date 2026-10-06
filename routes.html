@@ -304,7 +304,21 @@ const whoLabel = r => r.seat ? `${r.seat} &middot; ${r.walker?esc(walkerName(r.w
 const streetsOf = r => { const a=areas[r.areaId]; return a&&a.streets ? Object.entries(a.streets).map(([id,s])=>({id,...s})).sort((x,y)=>(x.order??999)-(y.order??999)||x.name.localeCompare(y.name)) : []; };
 function progress(rid){ const r=routes[rid]; const st=streetsOf(r); const c=checks[rid]||{}; const done=st.filter(s=>c[s.id]).length; return {done,total:st.length,pct:st.length?Math.round(done/st.length*100):0}; }
 const mineOrAll = r => viewAs ? r.seat===viewAs : isAdmin ? (!walkerFilter || (walkerFilter.startsWith("seat:") ? r.seat===walkerFilter.slice(5) : r.walker===walkerFilter)) : r.walker===me.key;
-const routesOn = d => viewAs==="__training" ? Object.entries(routes).filter(([,r])=>r.training) : Object.entries(routes).filter(([,r])=>!r.training && r.start && r.start<=d && d<=(r.end||r.start) && (!r.days || r.days[d]) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
+// Doors still owed from days before today: what the plan said should be hung by last night, less what was hung.
+// "Hung" is the larger of the walker's day reports (split across his routes that day by planned hours) and the share of streets checked off.
+function behindDoors(id,r,d){
+  if(d!==today() || r.training || !r.start || r.start>=d) return 0;
+  const doors=Number(r.doors)||0, end=r.end||r.start; let planned=0, reported=0;
+  for(let x=r.start; x<d && x<=end; x=addDays(x,1)){ const hx=hoursOn(r,x); if(!hx) continue; planned+=hx*PACE;
+    const L=r.walker&&(logs[x]||{})[r.walker]; if(L&&L.count){ const all=Object.values(routes).filter(q=>!q.training&&q.walker===r.walker).reduce((n,q)=>n+hoursOn(q,x),0); reported+=Number(L.count)*hx/(all||hx); } }
+  if(end<d) planned=doors;
+  const p=progress(id); if(p.total&&p.done===p.total) return 0;
+  const hung=Math.min(doors, Math.max(reported, p.total?doors*p.done/p.total:0));
+  const owe=Math.round(Math.min(planned,doors)-hung); return owe>=10?owe:0;
+}
+const behindHrs = (id,r,d) => behindDoors(id,r,d)/PACE;
+const dayHrs = (id,r,d) => hoursOn(r,d)+behindHrs(id,r,d);
+const routesOn = d => viewAs==="__training" ? Object.entries(routes).filter(([,r])=>r.training) : Object.entries(routes).filter(([id,r])=>!r.training && r.start && r.start<=d && ((d<=(r.end||r.start) && (!r.days || r.days[d])) || behindDoors(id,r,d)>0) && mineOrAll(r)).sort((a,b)=>(a[1].start).localeCompare(b[1].start)||a[1].name.localeCompare(b[1].name));
 const parseGeo = s => { try { return JSON.parse(s.geo||"[]"); } catch(e){ return []; } };
 
 // ---------- navigation ----------
@@ -333,7 +347,8 @@ function routeCard(id,r){
   const p=progress(id), a=areas[r.areaId]||{};
   return `<div class="card routecard" data-open="${esc(id)}"><div class="top"><p class="flyer">${esc(flyerOf(r))}</p><span class="chip ${p.pct===100?"ok":""}">${p.done}/${p.total} streets</span></div>
     <div class="meta">${esc(a.name||"")}</div>${a.start?`<div class="meta">Start: ${startLink(a)}</div>`:""}
-    ${hoursOn(r,curDate)?`<div class="meta"><b>About ${hrs(hoursOn(r,curDate))} hrs on ${fmtDay(curDate)}</b> at ${PACE} doors an hour, about ${Math.round(hoursOn(r,curDate)*PACE).toLocaleString()} doors</div>`:""}
+    ${behindDoors(id,r,curDate)?`<div class="meta"><span class="chip warn">Left from earlier days</span> <b>about ${hrs(behindHrs(id,r,curDate))} hrs</b>, about ${behindDoors(id,r,curDate).toLocaleString()} doors. Finish these first.</div>`:""}
+    ${hoursOn(r,curDate)?`<div class="meta"><b>About ${hrs(hoursOn(r,curDate))} hrs ${behindDoors(id,r,curDate)?"planned for":"on"} ${fmtDay(curDate)}</b> at ${PACE} doors an hour, about ${Math.round(hoursOn(r,curDate)*PACE).toLocaleString()} doors</div>`:""}
     <div class="meta">${fmtRange(r.start,r.end)} &middot; ${Number(r.doors||0).toLocaleString()} doors &middot; about ${(r.doors/PACE).toFixed(1)} hrs${isAdmin&&(walkerFilter||!r.seat)?` &middot; ${whoLabel(r)}`:""}</div>
     <div class="prog"><i style="width:${p.pct}%"></i></div>${r.note?`<div class="muted">${esc(r.note)}</div>`:""}</div>`;
 }
@@ -357,12 +372,12 @@ function renderToday(app){
   const seats = seatList();
   if(isAdmin && !walkerFilter && seats.length){
     // Flyers going up, then one lane per walker seat.
-    h += `<div class="card"><h2>Flyers going up ${fmtDay(curDate)}</h2>${rs.length?`<ul class="flyerlist">${rs.map(([id,r])=>`<li><b>${esc(flyerOf(r))}</b><span class="meta">${esc((areas[r.areaId]||{}).name||"")}</span><span class="muted">${esc(r.seat||"No seat")} &middot; about ${hrs(hoursOn(r,curDate))} hrs</span></li>`).join("")}</ul>`:'<p class="meta">Nothing goes up on this day.</p>'}</div>`;
+    h += `<div class="card"><h2>Flyers going up ${fmtDay(curDate)}</h2>${rs.length?`<ul class="flyerlist">${rs.map(([id,r])=>`<li><b>${esc(flyerOf(r))}</b><span class="meta">${esc((areas[r.areaId]||{}).name||"")}</span><span class="muted">${esc(r.seat||"No seat")} &middot; about ${hrs(dayHrs(id,r,curDate))} hrs${behindDoors(id,r,curDate)?" (includes catch-up)":""}</span></li>`).join("")}</ul>`:'<p class="meta">Nothing goes up on this day.</p>'}</div>`;
     const lane = (title, who, list, light) => `<section class="lane ${light?"light":""}"><h3>${esc(title)}${light?' <span class="chip">Part-time or backup</span>':""}</h3><p class="lanewho">${who}</p>${list.length?list.map(([id,r])=>routeCard(id,r)).join(""):'<p class="muted">No route this day.</p>'}</section>`;
-    h += `<div class="lanes">${seats.map(s=>{ const mine=rs.filter(([,r])=>r.seat===s); const k=(mine.find(([,r])=>r.walker)||[])[1]?.walker||seatPerson(s); const t=mine.reduce((n,[,r])=>n+hoursOn(r,curDate),0); return lane(s, (k?esc(walkerName(k)):"No one assigned")+(t?` &middot; <b>about ${hrs(t)} hrs</b>`:""), mine, seatIsLight(s)); }).join("")}${rs.some(([,r])=>!r.seat)?lane("No seat","Give these routes a seat on the Schedule tab",rs.filter(([,r])=>!r.seat),true):""}</div>`;
+    h += `<div class="lanes">${seats.map(s=>{ const mine=rs.filter(([,r])=>r.seat===s); const k=(mine.find(([,r])=>r.walker)||[])[1]?.walker||seatPerson(s); const t=mine.reduce((n,[id,r])=>n+dayHrs(id,r,curDate),0); return lane(s, (k?esc(walkerName(k)):"No one assigned")+(t?` &middot; <b>about ${hrs(t)} hrs</b>`:""), mine, seatIsLight(s)); }).join("")}${rs.some(([,r])=>!r.seat)?lane("No seat","Give these routes a seat on the Schedule tab",rs.filter(([,r])=>!r.seat),true):""}</div>`;
   } else
   h += rs.length ? rs.map(([id,r])=>routeCard(id,r)).join("") : `<div class="card"><p class="meta">No routes on this day${isAdmin&&!Object.keys(routes).length?". Open Setup to load the starting data.":"."}</p></div>`;
-  if(!isAdmin && rs.length && rs.some(([,r])=>hoursOn(r,curDate))){ const t=rs.reduce((n,[,r])=>n+hoursOn(r,curDate),0); h = h.replace('</div>', `</div><p class="meta"><b>About ${hrs(t)} hours on ${fmtDay(curDate)}</b> at ${PACE} doors an hour.</p>`); }
+  if(!isAdmin && rs.length && rs.some(([id,r])=>dayHrs(id,r,curDate))){ const t=rs.reduce((n,[id,r])=>n+dayHrs(id,r,curDate),0), b=rs.reduce((n,[id,r])=>n+behindHrs(id,r,curDate),0); h = h.replace('</div>', `</div><p class="meta"><b>About ${hrs(t)} hours on ${fmtDay(curDate)}</b> at ${PACE} doors an hour${b?`. That is ${hrs(t-b)} for today plus ${hrs(b)} left from earlier days`:""}.</p>`); }
   if(!isAdmin) h += reportForm(curDate);
   app.innerHTML=h; wireDateBar(1); wireCards(); if(!isAdmin) wireReport(curDate);
 }
